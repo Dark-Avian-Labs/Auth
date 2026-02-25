@@ -78,6 +78,24 @@ const PARAMETRIC_URL = preferredAppUrl(
   'https://parametric.shark5060.net',
 );
 const CORPUS_URL = preferredAppUrl('corpus', 'https://corpus.shark5060.net');
+const APP_URL_BY_ID: Record<string, string> = {
+  parametric: PARAMETRIC_URL,
+  corpus: CORPUS_URL,
+};
+const APP_META_BY_ID: Record<string, { label: string; subtitle: string }> = {
+  parametric: {
+    label: 'Parametric',
+    subtitle: 'Build planning and management',
+  },
+  corpus: {
+    label: 'Corpus',
+    subtitle: 'Collection tracking',
+  },
+};
+const SHARED_THEME_STORAGE_KEY = 'dal.theme.mode';
+const SHARED_THEME_COOKIE = 'dal.theme.mode';
+const SHARED_THEME_COOKIE_DOMAIN = '.shark5060.net';
+const SHARED_THEME_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 function escapeHtml(input: string): string {
   return input
@@ -86,6 +104,78 @@ function escapeHtml(input: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function resolveThemeModeFromRequest(req: express.Request): 'light' | 'dark' {
+  const cookieTheme =
+    typeof req.cookies?.[SHARED_THEME_COOKIE] === 'string'
+      ? req.cookies[SHARED_THEME_COOKIE]
+      : '';
+  return cookieTheme === 'light' ? 'light' : 'dark';
+}
+
+function renderSharedThemeScript(defaultMode: 'light' | 'dark'): string {
+  return `<script>
+(() => {
+  const THEME_KEY = ${JSON.stringify(SHARED_THEME_STORAGE_KEY)};
+  const THEME_COOKIE = ${JSON.stringify(SHARED_THEME_COOKIE)};
+  const THEME_COOKIE_DOMAIN = ${JSON.stringify(SHARED_THEME_COOKIE_DOMAIN)};
+  const ONE_YEAR_SECONDS = ${SHARED_THEME_MAX_AGE_SECONDS};
+  const DEFAULT_MODE = ${JSON.stringify(defaultMode)};
+
+  const readCookie = (name) => {
+    const encoded = name + '=';
+    const parts = document.cookie.split(';');
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (trimmed.startsWith(encoded)) {
+        return decodeURIComponent(trimmed.slice(encoded.length));
+      }
+    }
+    return '';
+  };
+
+  const normalize = (value) => (value === 'light' ? 'light' : 'dark');
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+
+  const writeCookie = (mode) => {
+    const base = THEME_COOKIE + '=' + encodeURIComponent(mode) + '; Max-Age=' + ONE_YEAR_SECONDS + '; Path=/; SameSite=Lax' + secure;
+    document.cookie = base;
+    document.cookie = base + '; Domain=' + THEME_COOKIE_DOMAIN;
+  };
+
+  const syncButton = (mode) => {
+    const toggleBtn = document.getElementById('theme-toggle-btn');
+    const toggleIcon = document.getElementById('theme-toggle-icon');
+    if (!toggleBtn || !toggleIcon) return;
+    const next = mode === 'dark' ? 'light' : 'dark';
+    toggleBtn.setAttribute('aria-label', 'Switch to ' + next + ' mode');
+    toggleBtn.setAttribute('title', 'Switch to ' + next + ' mode');
+    toggleIcon.textContent = mode === 'dark' ? '☀' : '☾';
+  };
+
+  const applyTheme = (mode) => {
+    const normalized = normalize(mode);
+    document.documentElement.classList.remove('theme-light', 'theme-dark');
+    document.documentElement.classList.add('theme-' + normalized);
+    window.localStorage.setItem(THEME_KEY, normalized);
+    writeCookie(normalized);
+    syncButton(normalized);
+  };
+
+  const stored = window.localStorage.getItem(THEME_KEY);
+  const cookieTheme = readCookie(THEME_COOKIE);
+  applyTheme(normalize(stored || cookieTheme || DEFAULT_MODE));
+
+  const toggleBtn = document.getElementById('theme-toggle-btn');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const current = document.documentElement.classList.contains('theme-light') ? 'light' : 'dark';
+      applyTheme(current === 'dark' ? 'light' : 'dark');
+    });
+  }
+})();
+</script>`;
 }
 
 const APP_ROOT = process.cwd();
@@ -304,6 +394,234 @@ function requireAdmin(
   next();
 }
 
+app.get('/', (req, res) => {
+  if (typeof req.session.user_id !== 'number' || req.session.user_id <= 0) {
+    res.redirect('/login');
+    return;
+  }
+
+  const userId = req.session.user_id;
+  const username =
+    typeof req.session.username === 'string' ? req.session.username : 'User';
+  const appAccess = getGamesForUser(userId);
+  const isAdmin = Boolean(req.session.is_admin);
+  const themeMode = resolveThemeModeFromRequest(req);
+
+  const cards = appAccess
+    .map((appId) => {
+      const appUrl = APP_URL_BY_ID[appId];
+      if (!appUrl) return null;
+      const meta = APP_META_BY_ID[appId] ?? {
+        label: appId,
+        subtitle: 'Open app',
+      };
+      return `<a class="app-card" href="${escapeHtml(appUrl)}">
+        <h2>${escapeHtml(meta.label)}</h2>
+        <p>${escapeHtml(meta.subtitle)}</p>
+      </a>`;
+    })
+    .filter((item): item is string => typeof item === 'string');
+
+  const selectorHtml = `<!doctype html>
+<html class="theme-${themeMode}">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Dark Avian Labs Apps</title>
+    <link rel="icon" href="/favicon.ico" />
+    ${renderSharedThemeScript(themeMode)}
+    <style>
+      :root {
+        --color-foreground: #f8fafc;
+        --color-muted: #c7c7cf;
+        --color-accent: rgb(99, 99, 255);
+        --color-glass: rgba(255, 255, 255, 0.024);
+        --color-glass-border: rgba(255, 255, 255, 0.08);
+        --color-bg-start: #000000;
+        --color-bg-end: #0f172a;
+        --color-bg-glow: rgba(100, 116, 139, 0.2);
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        color: var(--color-foreground);
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background:
+          radial-gradient(circle at 10% 10%, var(--color-bg-glow), transparent 40%),
+          radial-gradient(circle at 85% 15%, var(--color-bg-glow), transparent 45%),
+          linear-gradient(to bottom, var(--color-bg-start) 0%, var(--color-bg-end) 100%);
+        overflow-x: hidden;
+      }
+      .bg-art {
+        white-space: pre;
+        color: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+        z-index: 0;
+        pointer-events: none;
+        user-select: none;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 10px;
+        line-height: 1.2;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .wrap {
+        position: relative;
+        z-index: 10;
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .top-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 18px;
+      }
+      .top-brand img {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+      }
+      .top-brand span {
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .theme-toggle-fab {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 15;
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        border: 1px solid var(--color-glass-border);
+        background: var(--color-glass);
+        color: var(--color-muted);
+        cursor: pointer;
+      }
+      html.theme-light {
+        --color-foreground: #0f172a;
+        --color-muted: #475569;
+        --color-glass: rgba(255, 255, 255, 0.68);
+        --color-glass-border: rgba(15, 23, 42, 0.2);
+        --color-bg-start: #dbe4f1;
+        --color-bg-end: #f8fafc;
+        --color-bg-glow: rgba(148, 163, 184, 0.28);
+      }
+      .glass {
+        border-radius: 18px;
+        background: var(--color-glass);
+        border: 1px solid var(--color-glass-border);
+        box-shadow:
+          0 8px 32px rgba(0, 0, 0, 0.25),
+          inset 0 1px 0 rgba(255, 255, 255, 0.14),
+          inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+        backdrop-filter: blur(12px) saturate(1.2);
+      }
+      .panel {
+        padding: 20px;
+      }
+      .panel h1 {
+        margin: 0 0 6px;
+        font-size: 1.35rem;
+      }
+      .subtitle {
+        margin: 0;
+        color: var(--color-muted);
+      }
+      .meta {
+        margin-top: 8px;
+        color: var(--color-muted);
+        font-size: 0.92rem;
+      }
+      .apps {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 18px;
+      }
+      .app-card {
+        min-width: 220px;
+        flex: 1 1 240px;
+        text-decoration: none;
+        color: var(--color-foreground);
+        border: 1px solid color-mix(in srgb, var(--color-accent) 45%, transparent);
+        border-radius: 12px;
+        padding: 16px;
+        background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+        transition: background 0.2s, border-color 0.2s;
+      }
+      .app-card:hover {
+        background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+        border-color: var(--color-accent);
+      }
+      .app-card h2 {
+        margin: 0 0 6px;
+        font-size: 1.1rem;
+      }
+      .app-card p {
+        margin: 0;
+        color: var(--color-muted);
+        font-size: 0.92rem;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 18px;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        padding: 8px 12px;
+        text-decoration: none;
+        color: var(--color-muted);
+        background: rgba(255, 255, 255, 0.04);
+        transition: all 0.2s;
+      }
+      .btn:hover {
+        color: var(--color-foreground);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+      .empty {
+        margin-top: 18px;
+        color: var(--color-muted);
+      }
+    </style>
+  </head>
+  <body>
+    ${BACKGROUND_ART_HTML ? `<div class="bg-art">${BACKGROUND_ART_HTML}</div>` : ''}
+    <button id="theme-toggle-btn" class="theme-toggle-fab" type="button" aria-label="Toggle theme" title="Toggle theme"><span id="theme-toggle-icon" aria-hidden="true">☀</span></button>
+    <main class="wrap">
+      <div class="top-brand">
+        <img src="/branding/feathers.png" alt="Dark Avian Labs feather mark" />
+        <span>Dark Avian Labs</span>
+      </div>
+      <section class="glass panel">
+        <h1>Welcome, ${escapeHtml(username)}</h1>
+        <p class="subtitle">Choose an app to continue.</p>
+        <p class="meta">Only apps you have access to are shown.</p>
+        ${
+          cards.length > 0
+            ? `<div class="apps">${cards.join('')}</div>`
+            : '<p class="empty">No apps assigned to your account yet. Contact an administrator.</p>'
+        }
+        <div class="actions">
+          ${isAdmin ? '<a class="btn" href="/admin">Open Admin</a>' : ''}
+          <a class="btn" href="/logout">Logout</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>`;
+
+  res.type('html').send(selectorHtml);
+});
+
 app.get('/login', (req, res) => {
   const nextInput =
     typeof req.query.next === 'string' && req.query.next.length > 0
@@ -311,13 +629,15 @@ app.get('/login', (req, res) => {
       : '';
   const next = sanitizeNextUrl(nextInput, '/');
   const csrfToken = generateToken(req);
+  const themeMode = resolveThemeModeFromRequest(req);
   const loginHtml = `<!doctype html>
-<html>
+<html class="theme-${themeMode}">
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Dark Avian Labs Login</title>
     <link rel="icon" href="/favicon.ico" />
+    ${renderSharedThemeScript(themeMode)}
     <style>
       :root {
         --color-foreground: #f8fafc;
@@ -399,6 +719,34 @@ app.get('/login', (req, res) => {
         font-weight: 700;
         letter-spacing: 0.01em;
       }
+      .theme-toggle-fab {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 15;
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        border: 1px solid var(--color-glass-border);
+        background: var(--color-glass);
+        color: var(--color-muted);
+        cursor: pointer;
+      }
+      html.theme-light {
+        --color-foreground: #0f172a;
+        --color-muted: #475569;
+        --color-glass: rgba(255, 255, 255, 0.68);
+        --color-glass-border: rgba(15, 23, 42, 0.2);
+        --color-glass-border-hover: rgba(15, 23, 42, 0.3);
+        --color-bg-start: #dbe4f1;
+        --color-bg-end: #f8fafc;
+        --color-bg-glow: rgba(148, 163, 184, 0.28);
+      }
+      html.theme-light input {
+        background: rgba(255, 255, 255, 0.9);
+        color: #0f172a;
+        border-color: rgba(15, 23, 42, 0.2);
+      }
       .hero-brand {
         display: block;
         width: 128px;
@@ -446,6 +794,7 @@ app.get('/login', (req, res) => {
   </head>
   <body>
     ${BACKGROUND_ART_HTML ? `<div class="bg-art">${BACKGROUND_ART_HTML}</div>` : ''}
+    <button id="theme-toggle-btn" class="theme-toggle-fab" type="button" aria-label="Toggle theme" title="Toggle theme"><span id="theme-toggle-icon" aria-hidden="true">☀</span></button>
     <div class="top-brand">
       <img src="/branding/feathers.png" alt="Dark Avian Labs feather mark" />
       <span>Dark Avian Labs Login</span>
@@ -929,15 +1278,17 @@ app.put(
 
 app.get('/admin', requireAdmin, (req, res) => {
   const csrfToken = generateToken(req);
+  const themeMode = resolveThemeModeFromRequest(req);
   const currentUserId =
     typeof req.session.user_id === 'number' ? req.session.user_id : null;
   const adminHtml = `<!doctype html>
-<html>
+<html class="theme-${themeMode}">
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
     <title>Dark Avian Labs Admin</title>
     <meta name="csrf-token" content="${csrfToken.replace(/"/g, '&quot;')}" />
+    ${renderSharedThemeScript(themeMode)}
     <style>
       :root { --fg:#f8fafc; --muted:#c7c7cf; --accent:#6363ff; --glass:rgba(255,255,255,.024); --border:rgba(255,255,255,.08); --bg1:#020617; --bg2:#0b1020; }
       body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; overflow-x:hidden; color:var(--fg); font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:linear-gradient(180deg,var(--bg1) 0%,var(--bg2) 100%); }
@@ -967,10 +1318,13 @@ app.get('/admin', requireAdmin, (req, res) => {
       .top-brand { position: fixed; top: 20px; left: 20px; z-index: 15; display: inline-flex; align-items: center; gap: 10px; }
       .top-brand img { width: 28px; height: 28px; object-fit: contain; }
       .top-brand span { font-weight: 700; letter-spacing: 0.01em; }
+      .theme-toggle-fab { position: fixed; top: 20px; right: 20px; z-index: 15; width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--border); background: var(--glass); color: var(--muted); cursor: pointer; }
+      html.theme-light { --fg:#0f172a; --muted:#475569; --glass:rgba(255,255,255,.78); --border:rgba(15,23,42,.2); --bg1:#dbe4f1; --bg2:#f8fafc; }
     </style>
   </head>
   <body>
     ${BACKGROUND_ART_HTML ? `<div class="bg-art">${BACKGROUND_ART_HTML}</div>` : ''}
+    <button id="theme-toggle-btn" class="theme-toggle-fab" type="button" aria-label="Toggle theme" title="Toggle theme"><span id="theme-toggle-icon" aria-hidden="true">☀</span></button>
     <div class="top-brand">
       <img src="/branding/feathers.png" alt="Dark Avian Labs feather mark" />
       <span>Dark Avian Labs Admin</span>

@@ -6,6 +6,7 @@ module.exports = {
   apps: [
     {
       name: 'Auth',
+      namespace: 'dark-avian-labs',
       script: './dist/index.js',
       cwd: path.join(APPS_ROOT, 'auth'),
       interpreter: 'node',
@@ -29,6 +30,7 @@ module.exports = {
     },
     {
       name: 'Corpus',
+      namespace: 'dark-avian-labs',
       script: './dist/index.js',
       cwd: path.join(APPS_ROOT, 'corpus'),
       interpreter: 'node',
@@ -52,6 +54,7 @@ module.exports = {
     },
     {
       name: 'Parametric',
+      namespace: 'dark-avian-labs',
       script: './dist/server/index.js',
       cwd: path.join(APPS_ROOT, 'parametric'),
       interpreter: 'node',

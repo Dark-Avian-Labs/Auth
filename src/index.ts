@@ -283,7 +283,7 @@ app.get('/login', (req, res) => {
   <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1"/>
-    <title>Auth Login</title>
+    <title>Dark Avian Labs Login</title>
     <link rel="icon" href="/favicon.ico" />
     <style>
       body {
@@ -340,8 +340,8 @@ app.get('/login', (req, res) => {
   </head>
   <body>
     <main class="auth-box">
-      <img class="brand" src="/branding/feathers.png" alt="Auth branding" />
-      <h1>Auth Login</h1>
+      <img class="brand" src="/branding/feathers.png" alt="Dark Avian Labs Branding" />
+      <h1>Dark Avian Labs Login</h1>
       <form method="post" action="/api/auth/login">
         <input type="text" name="username" placeholder="Username" required />
         <input type="password" name="password" placeholder="Password" required />
@@ -817,7 +817,7 @@ app.get('/admin', (_req, res) => {
   res
     .type('html')
     .send(
-      '<h1>Central Auth Admin</h1><p>Use API endpoints at /api/admin/users for user and permission management.</p>',
+      '<h1>Central Dark Avian Labs Admin</h1><p>Use API endpoints at /api/admin/users for user and permission management.</p>',
     );
 });
 

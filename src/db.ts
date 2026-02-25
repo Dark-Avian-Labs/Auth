@@ -13,7 +13,22 @@ if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
 export const db = new Database(CENTRAL_DB_PATH);
 db.pragma('journal_mode = WAL');
 
+function normalizeSessionsSchema(): void {
+  const rows = db.prepare('PRAGMA table_info(sessions)').all() as Array<{
+    name: string;
+  }>;
+  if (rows.length === 0) return;
+
+  const hasExpire = rows.some((row) => row.name === 'expire');
+  const hasExpired = rows.some((row) => row.name === 'expired');
+
+  if (!hasExpire && hasExpired) {
+    db.exec('ALTER TABLE sessions RENAME COLUMN expired TO expire');
+  }
+}
+
 export function createSchema(): void {
+  normalizeSessionsSchema();
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +48,7 @@ export function createSchema(): void {
     CREATE TABLE IF NOT EXISTS sessions (
       sid TEXT PRIMARY KEY,
       sess TEXT NOT NULL,
-      expired INTEGER NOT NULL
+      expire TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS user_app_permissions (

@@ -1,13 +1,12 @@
 {
-  "name": "auth-service",
+  "name": "auth",
   "version": "1.0.0",
+  "description": "Dark Avian Labs Auth Service",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "dev": "tsc -w -p tsconfig.json",
-    "bootstrap:admin": "npm run build && node dist/bootstrap-admin.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

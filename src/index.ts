@@ -224,9 +224,27 @@ console.log(`[Auth] Central DB ready (${CENTRAL_DB_PATH})`);
 
 const app = express();
 if (TRUST_PROXY) app.set('trust proxy', 1);
+if (process.env.NODE_ENV === 'production' && !TRUST_PROXY) {
+  throw new Error(
+    'TRUST_PROXY must be enabled in production for secure cross-site cookies.',
+  );
+}
 app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+const baselineLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) =>
+    req.path === '/healthz' ||
+    req.path === '/readyz' ||
+    req.path === '/favicon.ico' ||
+    req.path === '/branding/feathers.png',
+});
+app.use(baselineLimiter);
 
 const STATIC_ROOT = APP_ROOT;
 const staticAssetLimiter = rateLimit({
@@ -240,6 +258,17 @@ app.get('/favicon.ico', staticAssetLimiter, (_req, res) => {
 });
 app.get('/branding/feathers.png', staticAssetLimiter, (_req, res) => {
   res.sendFile(path.join(STATIC_ROOT, 'feathers.png'));
+});
+app.get('/healthz', (_req, res) => {
+  res.json({ status: 'ok', app: 'Auth' });
+});
+app.get('/readyz', (_req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'ready', app: 'Auth' });
+  } catch {
+    res.status(503).json({ status: 'not_ready', app: 'Auth' });
+  }
 });
 
 const sessionStore = new SQLiteStore({
@@ -267,9 +296,6 @@ app.use(
 const { csrfSynchronisedProtection, generateToken } = csrfSync({
   getTokenFromRequest: (req: express.Request) => {
     if (req.body?._csrf) return String(req.body._csrf);
-    const q = req.query?._csrf;
-    if (Array.isArray(q)) return String(q[0] ?? '');
-    if (typeof q === 'string') return q;
     const header = req.headers['x-csrf-token'] ?? req.headers['x-xsrf-token'];
     if (Array.isArray(header)) return String(header[0] ?? '');
     if (typeof header === 'string') return header;
@@ -310,13 +336,6 @@ function sanitizeNextUrl(
 }
 
 function requestIp(req: express.Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (Array.isArray(forwarded) && forwarded.length > 0) {
-    return String(forwarded[0]).split(',')[0]?.trim() ?? req.ip ?? 'unknown';
-  }
-  if (typeof forwarded === 'string' && forwarded.length > 0) {
-    return forwarded.split(',')[0]?.trim() ?? req.ip ?? 'unknown';
-  }
   return req.ip ?? 'unknown';
 }
 
@@ -397,6 +416,27 @@ async function hashPassword(password: string): Promise<string> {
   });
 }
 
+function revokeSessionsForUser(userId: number): number {
+  const sessions = db.prepare('SELECT sid, sess FROM sessions').all() as Array<{
+    sid: string;
+    sess: string;
+  }>;
+  const deleteSession = db.prepare('DELETE FROM sessions WHERE sid = ?');
+  let revoked = 0;
+  for (const row of sessions) {
+    try {
+      const payload = JSON.parse(row.sess) as { user_id?: unknown };
+      if (payload.user_id === userId) {
+        const result = deleteSession.run(row.sid);
+        revoked += result.changes;
+      }
+    } catch {
+      // Ignore malformed session rows.
+    }
+  }
+  return revoked;
+}
+
 function requireAuth(
   req: express.Request,
   res: express.Response,
@@ -418,10 +458,13 @@ function requireAdmin(
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
-  if (!req.session.is_admin) {
+  const currentUser = getUserById(req.session.user_id);
+  if (!currentUser || !currentUser.is_admin) {
+    req.session.is_admin = false;
     res.status(403).json({ error: 'Admin access required' });
     return;
   }
+  req.session.is_admin = true;
   next();
 }
 
@@ -1059,9 +1102,7 @@ app.post(
       hash,
       user.id,
     );
-    db.prepare('DELETE FROM sessions WHERE sess LIKE ?').run(
-      `%"user_id":${user.id}%`,
-    );
+    revokeSessionsForUser(user.id);
     appendAuditLog({
       actorUserId: user.id,
       eventType: 'auth.password_change.success',
@@ -1079,9 +1120,7 @@ app.post(
   csrfSynchronisedProtection,
   (req, res) => {
     const userId = req.session.user_id!;
-    db.prepare('DELETE FROM sessions WHERE sess LIKE ?').run(
-      `%"user_id":${userId}%`,
-    );
+    revokeSessionsForUser(userId);
     appendAuditLog({
       actorUserId: userId,
       eventType: 'auth.logout_all',
@@ -1208,6 +1247,9 @@ app.patch(
       res.status(404).json({ error: 'User not found' });
       return;
     }
+    if (typeof req.body?.is_admin === 'boolean') {
+      revokeSessionsForUser(userId);
+    }
     appendAuditLog({
       actorUserId: req.session.user_id!,
       eventType: 'admin.user.update',
@@ -1240,6 +1282,7 @@ app.delete(
       res.status(404).json({ error: 'User not found' });
       return;
     }
+    revokeSessionsForUser(userId);
     appendAuditLog({
       actorUserId: req.session.user_id!,
       eventType: 'admin.user.delete',
@@ -1457,15 +1500,26 @@ app.get('/admin', requireAdmin, (req, res) => {
           : '<span class="badge user">user</span>';
       }
 
+      function esc(value) {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#39;');
+      }
+
       function userRow(user) {
+        const userId = Number(user.id);
+        const username = esc(user.username || '');
         return '<tr data-user-id="' + user.id + '">' +
-          '<td>' + user.id + '</td>' +
-          '<td>' + user.username + '</td>' +
+          '<td>' + userId + '</td>' +
+          '<td>' + username + '</td>' +
           '<td>' + roleBadge(user) + '</td>' +
           '<td class="split">' +
             '<button class="btn" data-action="configure">Configure</button>' +
             '<button class="btn" data-action="toggle-admin">' + (user.is_admin ? 'Remove admin' : 'Make admin') + '</button>' +
-            (currentUserId === user.id ? '' : '<button class="btn" data-action="delete">Delete</button>') +
+            (currentUserId === userId ? '' : '<button class="btn" data-action="delete">Delete</button>') +
           '</td>' +
         '</tr>';
       }
@@ -1525,14 +1579,17 @@ app.get('/admin', requireAdmin, (req, res) => {
       function cfgRow(user, appId) {
         const hasAccess = Array.isArray(user.app_access) && user.app_access.includes(appId);
         const perms = permsForApp(user, appId);
-        const badges = perms.length ? perms.map((perm) => '<span class="subperm">' + perm + '</span>').join('') : '<span class="muted">(none)</span>';
+        const safeAppId = esc(appId);
+        const badges = perms.length
+          ? perms.map((perm) => '<span class="subperm">' + esc(perm) + '</span>').join('')
+          : '<span class="muted">(none)</span>';
         return '<tr>' +
-          '<td>' + appId + '</td>' +
-          '<td>' + (appId === '*' ? '<span class="muted">global</span>' : '<button class="btn" data-action="cfg-toggle-access" data-app-id="' + appId + '" data-enabled="' + (hasAccess ? '1' : '0') + '">' + (hasAccess ? 'Revoke' : 'Grant') + '</button>') + '</td>' +
+          '<td>' + safeAppId + '</td>' +
+          '<td>' + (appId === '*' ? '<span class="muted">global</span>' : '<button class="btn" data-action="cfg-toggle-access" data-app-id="' + safeAppId + '" data-enabled="' + (hasAccess ? '1' : '0') + '">' + (hasAccess ? 'Revoke' : 'Grant') + '</button>') + '</td>' +
           '<td>' + badges + '</td>' +
           '<td class="split">' +
-            '<input data-input="cfg-perms" data-app-id="' + appId + '" placeholder="perm1,perm2 or *" value="' + perms.join(',') + '" />' +
-            '<button class="btn btn-accent" data-action="cfg-save-perms" data-app-id="' + appId + '">Save</button>' +
+            '<input data-input="cfg-perms" data-app-id="' + safeAppId + '" placeholder="perm1,perm2 or *" value="' + esc(perms.join(',')) + '" />' +
+            '<button class="btn btn-accent" data-action="cfg-save-perms" data-app-id="' + safeAppId + '">Save</button>' +
           '</td>' +
         '</tr>';
       }
@@ -1587,7 +1644,10 @@ app.get('/admin', requireAdmin, (req, res) => {
         if (action === 'cfg-save-perms') {
           const appId = String(target.getAttribute('data-app-id') || '').trim();
           if (!appId) return;
-          const input = document.querySelector('[data-input="cfg-perms"][data-app-id="' + appId + '"]');
+          const escapedAppId = window.CSS && typeof window.CSS.escape === 'function'
+            ? window.CSS.escape(appId)
+            : appId.replaceAll('"', '\\"');
+          const input = document.querySelector('[data-input="cfg-perms"][data-app-id="' + escapedAppId + '"]');
           const raw = input instanceof HTMLInputElement ? input.value.trim() : '';
           const permissions = raw ? raw.split(',').map((p) => p.trim()).filter(Boolean) : [];
           const { response, body } = await api('/api/admin/users/' + activeUserId + '/permissions', { method:'PUT', body: JSON.stringify({ app_id: appId, permissions }) });
@@ -1616,6 +1676,28 @@ app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, () => {
   console.log(`[Auth] Running at http://${HOST}:${PORT}`);
 });
+
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+function shutdown(): void {
+  let finished = false;
+  function closeAndExit(): void {
+    if (finished) return;
+    finished = true;
+    try {
+      db.close();
+    } catch (err) {
+      console.error('[Shutdown] Failed to close DB:', err);
+    }
+    process.exit(0); // eslint-disable-line n/no-process-exit -- graceful shutdown requires explicit exit
+  }
+  const timeout = setTimeout(() => closeAndExit(), SHUTDOWN_TIMEOUT_MS);
+  server.close(() => {
+    clearTimeout(timeout);
+    closeAndExit();
+  });
+}
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

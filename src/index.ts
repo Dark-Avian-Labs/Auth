@@ -65,6 +65,19 @@ const ALLOWED_NEXT_ORIGINS = (
   .map((v) => v.trim())
   .filter((v) => v.length > 0);
 
+function preferredAppUrl(keyword: string, fallback: string): string {
+  const match = ALLOWED_APP_ORIGINS.find((origin) =>
+    origin.toLowerCase().includes(keyword),
+  );
+  return match ?? fallback;
+}
+
+const PARAMETRIC_URL = preferredAppUrl(
+  'parametric',
+  'https://parametric.shark5060.net',
+);
+const CORPUS_URL = preferredAppUrl('corpus', 'https://corpus.shark5060.net');
+
 createSchema();
 console.log(`[Auth] Central DB ready (${CENTRAL_DB_PATH})`);
 
@@ -813,12 +826,299 @@ app.put(
   },
 );
 
-app.get('/admin', (_req, res) => {
-  res
-    .type('html')
-    .send(
-      '<h1>Central Dark Avian Labs Admin</h1><p>Use API endpoints at /api/admin/users for user and permission management.</p>',
-    );
+app.get('/admin', requireAdmin, (req, res) => {
+  const csrfToken = generateToken(req);
+  const currentUserId =
+    typeof req.session.user_id === 'number' ? req.session.user_id : null;
+  const adminHtml = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Central Dark Avian Labs Admin</title>
+    <meta name="csrf-token" content="${csrfToken.replace(/"/g, '&quot;')}" />
+    <style>
+      body {
+        margin: 0;
+        background: #0f1015;
+        color: #f5f6fb;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      }
+      .wrap {
+        width: min(1080px, 96vw);
+        margin: 20px auto 28px;
+      }
+      .card {
+        background: #171925;
+        border: 1px solid #2a2f45;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 1.45rem;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      input,
+      button {
+        font: inherit;
+        border-radius: 8px;
+        border: 1px solid #343a57;
+        padding: 8px 10px;
+      }
+      input {
+        background: #0f1220;
+        color: #f5f6fb;
+      }
+      button, .btn-link {
+        background: #232742;
+        color: #fff;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+      }
+      .btn-accent {
+        background: #8d140f;
+        border-color: #8d140f;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th, td {
+        border-top: 1px solid #2a2f45;
+        padding: 8px 6px;
+        vertical-align: top;
+        font-size: 0.9rem;
+      }
+      th {
+        text-align: left;
+        color: #c6cee4;
+      }
+      .muted { color: #9ba6c7; }
+      .msg { margin-top: 8px; font-size: 0.9rem; }
+      .ok { color: #7be495; }
+      .err { color: #ff8b8b; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Central Dark Avian Labs Admin</h1>
+        <p class="muted">User and permission management for all apps.</p>
+        <div class="row">
+          <a class="btn-link" href="${PARAMETRIC_URL}">Back to Parametric</a>
+          <a class="btn-link" href="${CORPUS_URL}">Back to Corpus</a>
+          <form method="GET" action="/logout">
+            <button type="submit">Logout</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Create User</h2>
+        <div class="row">
+          <input id="new-username" placeholder="Username" />
+          <input id="new-password" type="password" placeholder="Password" />
+          <label style="display:inline-flex;align-items:center;gap:6px;">
+            <input id="new-admin" type="checkbox" />
+            Admin
+          </label>
+          <button id="create-user" class="btn-accent">Create</button>
+        </div>
+        <div id="msg" class="msg muted"></div>
+      </div>
+
+      <div class="card">
+        <h2>Users</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>User</th>
+              <th>Role</th>
+              <th>App Access</th>
+              <th>Permissions</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="users-body">
+            <tr><td colspan="6" class="muted">Loading...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+      const currentUserId = ${currentUserId === null ? 'null' : String(currentUserId)};
+      const defaultApps = ['parametric', 'corpus'];
+
+      function showMessage(text, isError = false) {
+        const node = document.getElementById('msg');
+        if (!node) return;
+        node.textContent = text;
+        node.className = 'msg ' + (isError ? 'err' : 'ok');
+      }
+
+      async function api(url, options = {}) {
+        const headers = Object.assign(
+          { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          options.headers || {}
+        );
+        const response = await fetch(url, Object.assign({}, options, { headers }));
+        let body = null;
+        try { body = await response.json(); } catch {}
+        return { response, body };
+      }
+
+      function normalizeApps(user) {
+        const fromAccess = Array.isArray(user.app_access) ? user.app_access : [];
+        const fromPerms = Array.isArray(user.permissions)
+          ? user.permissions.map((entry) => String(entry).split(':', 1)[0]).filter(Boolean)
+          : [];
+        return [...new Set([...defaultApps, ...fromAccess, ...fromPerms])];
+      }
+
+      function rowTemplate(user) {
+        const apps = normalizeApps(user);
+        const appButtons = apps.map((appId) => {
+          const has = (user.app_access || []).includes(appId);
+          return '<button data-action="toggle-app" data-user-id="' + user.id + '" data-app-id="' + appId + '" data-enabled="' + (has ? '1' : '0') + '">' +
+            (has ? 'Revoke ' : 'Grant ') + appId + '</button>';
+        }).join(' ');
+
+        const permsRaw = Array.isArray(user.permissions) ? user.permissions : [];
+        const permsText = permsRaw.join(', ');
+
+        return '<tr data-user-id="' + user.id + '">' +
+          '<td>' + user.id + '</td>' +
+          '<td>' + user.username + '</td>' +
+          '<td>' + (user.is_admin ? 'admin' : 'user') + '</td>' +
+          '<td>' + appButtons + '</td>' +
+          '<td>' +
+            '<div style="max-width:360px;white-space:normal;word-break:break-word;">' + (permsText || '<span class="muted">(none)</span>') + '</div>' +
+            '<div class="row" style="margin-top:6px;">' +
+              '<input data-input="perm-app" data-user-id="' + user.id + '" placeholder="app_id (e.g. corpus or *)" style="max-width:160px;" />' +
+              '<input data-input="perm-list" data-user-id="' + user.id + '" placeholder="perm1,perm2 or *" style="min-width:220px;" />' +
+              '<button data-action="set-perms" data-user-id="' + user.id + '">Set</button>' +
+            '</div>' +
+          '</td>' +
+          '<td>' +
+            '<button data-action="toggle-admin" data-user-id="' + user.id + '" data-is-admin="' + (user.is_admin ? '1' : '0') + '">' +
+              (user.is_admin ? 'Remove admin' : 'Make admin') +
+            '</button>' +
+            (currentUserId === user.id ? '' : ' <button data-action="delete-user" data-user-id="' + user.id + '">Delete</button>') +
+          '</td>' +
+        '</tr>';
+      }
+
+      async function loadUsers() {
+        const bodyNode = document.getElementById('users-body');
+        if (!bodyNode) return;
+        bodyNode.innerHTML = '<tr><td colspan="6" class="muted">Loading...</td></tr>';
+        const { response, body } = await api('/api/admin/users', { method: 'GET' });
+        if (!response.ok || !body || !Array.isArray(body.users)) {
+          bodyNode.innerHTML = '<tr><td colspan="6" class="err">Failed to load users.</td></tr>';
+          return;
+        }
+        bodyNode.innerHTML = body.users.map(rowTemplate).join('');
+      }
+
+      async function createUser() {
+        const username = document.getElementById('new-username')?.value?.trim() || '';
+        const password = document.getElementById('new-password')?.value || '';
+        const isAdmin = Boolean(document.getElementById('new-admin')?.checked);
+        if (!username || !password) {
+          showMessage('Username and password are required.', true);
+          return;
+        }
+        const { response, body } = await api('/api/admin/users', {
+          method: 'POST',
+          body: JSON.stringify({ username, password, is_admin: isAdmin }),
+        });
+        if (!response.ok) {
+          showMessage(body?.error || 'Failed to create user.', true);
+          return;
+        }
+        showMessage('User created.');
+        document.getElementById('new-username').value = '';
+        document.getElementById('new-password').value = '';
+        document.getElementById('new-admin').checked = false;
+        await loadUsers();
+      }
+
+      async function onTableClick(event) {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) return;
+        const action = target.getAttribute('data-action');
+        const userId = Number(target.getAttribute('data-user-id'));
+        if (!action || !Number.isInteger(userId) || userId <= 0) return;
+
+        if (action === 'delete-user') {
+          if (!confirm('Delete this user?')) return;
+          const { response, body } = await api('/api/admin/users/' + userId, { method: 'DELETE' });
+          if (!response.ok) return showMessage(body?.error || 'Delete failed.', true);
+          showMessage('User deleted.');
+          return loadUsers();
+        }
+
+        if (action === 'toggle-admin') {
+          const isAdmin = target.getAttribute('data-is-admin') === '1';
+          const { response, body } = await api('/api/admin/users/' + userId, {
+            method: 'PATCH',
+            body: JSON.stringify({ is_admin: !isAdmin }),
+          });
+          if (!response.ok) return showMessage(body?.error || 'Update failed.', true);
+          showMessage('Role updated.');
+          return loadUsers();
+        }
+
+        if (action === 'toggle-app') {
+          const appId = String(target.getAttribute('data-app-id') || '').trim();
+          const enabled = target.getAttribute('data-enabled') === '1';
+          if (!appId) return;
+          const { response, body } = await api('/api/admin/users/' + userId + '/apps/' + encodeURIComponent(appId), {
+            method: 'PUT',
+            body: JSON.stringify({ enabled: !enabled }),
+          });
+          if (!response.ok) return showMessage(body?.error || 'App access update failed.', true);
+          showMessage('App access updated.');
+          return loadUsers();
+        }
+
+        if (action === 'set-perms') {
+          const appInput = document.querySelector('[data-input="perm-app"][data-user-id="' + userId + '"]');
+          const permInput = document.querySelector('[data-input="perm-list"][data-user-id="' + userId + '"]');
+          const appId = appInput instanceof HTMLInputElement ? appInput.value.trim() : '';
+          const permRaw = permInput instanceof HTMLInputElement ? permInput.value.trim() : '';
+          if (!appId) return showMessage('app_id is required for permissions.', true);
+          const permissions = permRaw
+            ? permRaw.split(',').map((p) => p.trim()).filter(Boolean)
+            : [];
+          const { response, body } = await api('/api/admin/users/' + userId + '/permissions', {
+            method: 'PUT',
+            body: JSON.stringify({ app_id: appId, permissions }),
+          });
+          if (!response.ok) return showMessage(body?.error || 'Permission update failed.', true);
+          showMessage('Permissions updated.');
+          return loadUsers();
+        }
+      }
+
+      document.getElementById('create-user')?.addEventListener('click', createUser);
+      document.getElementById('users-body')?.addEventListener('click', onTableClick);
+      loadUsers();
+    </script>
+  </body>
+</html>`;
+  res.type('html').send(adminHtml);
 });
 
 app.use('/api', (_req, res) => {

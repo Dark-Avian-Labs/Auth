@@ -233,6 +233,19 @@ app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
+const baselineLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 1200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) =>
+    req.path === '/healthz' ||
+    req.path === '/readyz' ||
+    req.path === '/favicon.ico' ||
+    req.path === '/branding/feathers.png',
+});
+app.use(baselineLimiter);
+
 const STATIC_ROOT = APP_ROOT;
 const staticAssetLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

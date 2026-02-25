@@ -30,6 +30,12 @@ const SQLiteStore = require('better-sqlite3-session-store')(
   expired: { clear: boolean; intervalMs: number };
 }) => session.Store;
 
+try {
+  process.loadEnvFile(path.join(process.cwd(), '.env'));
+} catch {
+  // Ignore when .env is absent; environment may be injected by PM2/systemd.
+}
+
 const PORT = parseInt(process.env.PORT ?? '3010', 10);
 const HOST = process.env.HOST ?? '127.0.0.1';
 const SESSION_SECRET = process.env.SESSION_SECRET;

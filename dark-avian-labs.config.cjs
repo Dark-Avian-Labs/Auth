@@ -1,7 +1,6 @@
 const path = require('path');
 
-const APPS_ROOT =
-  process.env.DARK_AVIAN_APPS_ROOT || '/var/www/applications';
+const APPS_ROOT = process.env.DARK_AVIAN_APPS_ROOT || '/var/www/applications';
 
 module.exports = {
   apps: [
@@ -10,6 +9,7 @@ module.exports = {
       script: './dist/index.js',
       cwd: path.join(APPS_ROOT, 'auth'),
       interpreter: 'node',
+      node_args: '--env-file=.env',
       instances: 1,
       exec_mode: 'fork',
       watch: false,
@@ -32,6 +32,7 @@ module.exports = {
       script: './dist/index.js',
       cwd: path.join(APPS_ROOT, 'corpus'),
       interpreter: 'node',
+      node_args: '--env-file=.env',
       instances: 1,
       exec_mode: 'fork',
       watch: false,

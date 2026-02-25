@@ -915,10 +915,10 @@ app.get('/admin', requireAdmin, (req, res) => {
     <title>Dark Avian Labs Admin</title>
     <meta name="csrf-token" content="${csrfToken.replace(/"/g, '&quot;')}" />
     <style>
-      :root { --fg:#f8fafc; --muted:#c7c7cf; --accent:#6363ff; --glass:rgba(255,255,255,.024); --border:rgba(255,255,255,.08); --bg1:#000; --bg2:#0f172a; --glow:rgba(100,116,139,.2); }
-      body { margin:0; color:var(--fg); font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:radial-gradient(circle at 10% 10%,var(--glow),transparent 40%),radial-gradient(circle at 85% 15%,var(--glow),transparent 45%),linear-gradient(to bottom,var(--bg1),var(--bg2)); }
+      :root { --fg:#f8fafc; --muted:#c7c7cf; --accent:#6363ff; --glass:rgba(255,255,255,.024); --border:rgba(255,255,255,.08); --bg1:#020617; --bg2:#0b1020; }
+      body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; overflow-x:hidden; color:var(--fg); font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:linear-gradient(180deg,var(--bg1) 0%,var(--bg2) 100%); }
       .bg-art { white-space:pre; color:color-mix(in srgb,var(--fg) 5%,transparent); pointer-events:none; user-select:none; font-family:'Courier New',monospace; font-size:10px; line-height:1.2; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); }
-      .wrap { position:relative; z-index:2; width:min(1200px,96vw); margin:20px auto 28px; }
+      .wrap { position:relative; z-index:2; width:min(1200px,96vw); margin:0; }
       .glass { border-radius:18px; background:var(--glass); border:1px solid var(--border); box-shadow:0 8px 32px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.14),inset 0 -1px 0 rgba(0,0,0,.12); backdrop-filter:blur(12px) saturate(1.2); }
       .card { padding:16px; margin-bottom:14px; }
       .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }

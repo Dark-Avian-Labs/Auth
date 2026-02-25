@@ -46,10 +46,41 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
   );
 }
 
-const COOKIE_DOMAIN = process.env.AUTH_COOKIE_DOMAIN ?? '.shark5060.net';
-const COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? 'shark.auth.sid';
 const AUTH_PUBLIC_BASE_URL =
   process.env.AUTH_PUBLIC_BASE_URL ?? 'https://auth.shark5060.net';
+function deriveCookieDomain(): string | undefined {
+  const explicitRaw = process.env.AUTH_COOKIE_DOMAIN?.trim();
+  if (explicitRaw && explicitRaw.length > 0) {
+    const explicit = explicitRaw;
+    try {
+      const authHost = new URL(AUTH_PUBLIC_BASE_URL).hostname.toLowerCase();
+      const normalized = explicit.replace(/^\./, '').toLowerCase();
+      if (normalized === authHost) {
+        const parts = authHost.split('.');
+        if (parts.length >= 2) {
+          return `.${parts.slice(-2).join('.')}`;
+        }
+      }
+    } catch {
+      // ignore parse errors and keep explicit domain
+    }
+    return explicit;
+  }
+
+  try {
+    const authHost = new URL(AUTH_PUBLIC_BASE_URL).hostname.toLowerCase();
+    const parts = authHost.split('.');
+    if (parts.length >= 2) {
+      return `.${parts.slice(-2).join('.')}`;
+    }
+  } catch {
+    // ignore and use fallback
+  }
+
+  return '.shark5060.net';
+}
+const COOKIE_DOMAIN = deriveCookieDomain();
+const COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? 'shark.auth.sid';
 const TRUST_PROXY =
   process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
 const ALLOWED_APP_ORIGINS = (

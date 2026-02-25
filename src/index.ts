@@ -380,13 +380,25 @@ app.get('/login', (req, res) => {
         width: min(92vw, 420px);
         padding: 24px 20px;
       }
-      .brand {
-        display: block;
-        width: 132px;
-        max-width: 45%;
-        margin: 0 auto 10px;
+      .top-brand {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 15;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
       }
-      h1 {
+      .top-brand img {
+        width: 28px;
+        height: 28px;
+        object-fit: contain;
+      }
+      .top-brand span {
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      h2 {
         margin: 0 0 6px;
         text-align: center;
         font-size: 1.35rem;
@@ -426,10 +438,13 @@ app.get('/login', (req, res) => {
   </head>
   <body>
     ${BACKGROUND_ART_HTML ? `<div class="bg-art">${BACKGROUND_ART_HTML}</div>` : ''}
+    <div class="top-brand">
+      <img src="/branding/feathers.png" alt="Dark Avian Labs feather mark" />
+      <span>Dark Avian Labs Login</span>
+    </div>
     <div class="center">
       <main class="auth-box glass">
-        <img class="brand" src="/branding/feathers.png" alt="Dark Avian Labs Branding" />
-        <h1>Dark Avian Labs Login</h1>
+        <h2>Sign in</h2>
         <p class="subtitle">Unified access for Parametric and Corpus.</p>
         <form method="post" action="/api/auth/login">
           <input type="text" name="username" placeholder="Username" required />
@@ -940,10 +955,17 @@ app.get('/admin', requireAdmin, (req, res) => {
       .perm-table td, .perm-table th { font-size:.86rem; }
       .subperm { display:inline-flex; margin:2px 6px 2px 0; padding:2px 8px; border-radius:999px; font-size:.76rem; border:1px solid rgba(99,99,255,.3); color:#d2d6ff; background:rgba(99,99,255,.14); }
       .split { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+      .top-brand { position: fixed; top: 20px; left: 20px; z-index: 15; display: inline-flex; align-items: center; gap: 10px; }
+      .top-brand img { width: 28px; height: 28px; object-fit: contain; }
+      .top-brand span { font-weight: 700; letter-spacing: 0.01em; }
     </style>
   </head>
   <body>
     ${BACKGROUND_ART_HTML ? `<div class="bg-art">${BACKGROUND_ART_HTML}</div>` : ''}
+    <div class="top-brand">
+      <img src="/branding/feathers.png" alt="Dark Avian Labs feather mark" />
+      <span>Dark Avian Labs Admin</span>
+    </div>
     <div class="wrap">
       <section class="glass card">
         <h1 style="margin:0 0 8px;">Central Dark Avian Labs Admin</h1>

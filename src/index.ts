@@ -333,7 +333,7 @@ app.get('/login', (req, res) => {
       }
       body {
         margin: 0;
-        min-height: 100vh;
+        min-height: 100dvh;
         color: var(--color-foreground);
         font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
         background:
@@ -345,7 +345,8 @@ app.get('/login', (req, res) => {
       .center {
         position: relative;
         z-index: 10;
-        min-height: 100vh;
+        min-height: 100dvh;
+        box-sizing: border-box;
         display: grid;
         place-items: center;
         padding: 20px;
@@ -398,6 +399,13 @@ app.get('/login', (req, res) => {
         font-weight: 700;
         letter-spacing: 0.01em;
       }
+      .hero-brand {
+        display: block;
+        width: 128px;
+        height: 128px;
+        object-fit: contain;
+        margin: 0 auto 8px;
+      }
       h2 {
         margin: 0 0 6px;
         text-align: center;
@@ -444,6 +452,7 @@ app.get('/login', (req, res) => {
     </div>
     <div class="center">
       <main class="auth-box glass">
+        <img class="hero-brand" src="/branding/feathers.png" alt="Dark Avian Labs feather mark" />
         <h2>Sign in</h2>
         <p class="subtitle">Unified access for Parametric and Corpus.</p>
         <form method="post" action="/api/auth/login">

@@ -6,6 +6,7 @@ import express from 'express';
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import { createRequire } from 'module';
+import path from 'path';
 
 import {
   db,
@@ -66,6 +67,14 @@ if (TRUST_PROXY) app.set('trust proxy', 1);
 app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+const STATIC_ROOT = process.cwd();
+app.get('/favicon.ico', (_req, res) => {
+  res.sendFile(path.join(STATIC_ROOT, 'favicon.ico'));
+});
+app.get('/branding/feathers.png', (_req, res) => {
+  res.sendFile(path.join(STATIC_ROOT, 'feathers.png'));
+});
 
 const sessionStore = new SQLiteStore({
   client: db,
@@ -259,16 +268,76 @@ app.get('/login', (req, res) => {
   const csrfToken = generateToken(req);
   const loginHtml = `<!doctype html>
 <html>
-  <head><meta charset="utf-8"/><title>Auth Login</title></head>
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1"/>
+    <title>Auth Login</title>
+    <link rel="icon" href="/favicon.ico" />
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0f1015;
+        color: #f5f6fb;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      }
+      .auth-box {
+        width: min(92vw, 380px);
+        background: #171925;
+        border: 1px solid #2a2f45;
+        border-radius: 12px;
+        padding: 24px 20px;
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      }
+      .brand {
+        display: block;
+        width: 120px;
+        max-width: 40%;
+        margin: 0 auto 10px;
+      }
+      h1 {
+        margin: 0 0 16px;
+        text-align: center;
+        font-size: 1.25rem;
+      }
+      form {
+        display: grid;
+        gap: 10px;
+      }
+      input,
+      button {
+        font: inherit;
+        border-radius: 8px;
+        border: 1px solid #343a57;
+        padding: 10px 12px;
+      }
+      input {
+        background: #0f1220;
+        color: #f5f6fb;
+      }
+      button {
+        cursor: pointer;
+        background: #8d140f;
+        border-color: #8d140f;
+        color: #fff;
+        font-weight: 600;
+      }
+    </style>
+  </head>
   <body>
-    <h1>Auth Login</h1>
-    <form method="post" action="/api/auth/login">
-      <input type="text" name="username" placeholder="Username" required />
-      <input type="password" name="password" placeholder="Password" required />
-      <input type="hidden" name="_csrf" value="${csrfToken.replace(/"/g, '&quot;')}" />
-      <input type="hidden" name="next" value="${next.replace(/"/g, '&quot;')}" />
-      <button type="submit">Login</button>
-    </form>
+    <main class="auth-box">
+      <img class="brand" src="/branding/feathers.png" alt="Auth branding" />
+      <h1>Auth Login</h1>
+      <form method="post" action="/api/auth/login">
+        <input type="text" name="username" placeholder="Username" required />
+        <input type="password" name="password" placeholder="Password" required />
+        <input type="hidden" name="_csrf" value="${csrfToken.replace(/"/g, '&quot;')}" />
+        <input type="hidden" name="next" value="${next.replace(/"/g, '&quot;')}" />
+        <button type="submit">Login</button>
+      </form>
+    </main>
   </body>
 </html>`;
   res.type('html').send(loginHtml);

@@ -47,7 +47,7 @@ if (!SESSION_SECRET || SESSION_SECRET.length < 32) {
 }
 
 const AUTH_PUBLIC_BASE_URL =
-  process.env.AUTH_PUBLIC_BASE_URL ?? 'https://auth.shark5060.net';
+  process.env.AUTH_PUBLIC_BASE_URL ?? 'http://localhost:3010';
 function deriveCookieDomain(): string | undefined {
   const explicitRaw = process.env.AUTH_COOKIE_DOMAIN?.trim();
   if (explicitRaw && explicitRaw.length > 0) {
@@ -77,15 +77,18 @@ function deriveCookieDomain(): string | undefined {
     // ignore and use fallback
   }
 
-  return '.shark5060.net';
+  return undefined;
 }
 const COOKIE_DOMAIN = deriveCookieDomain();
-const COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? 'shark.auth.sid';
+const COOKIE_NAME = process.env.AUTH_COOKIE_NAME ?? 'darkavianlabs.auth.sid';
 const TRUST_PROXY =
   process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+const PARAMETRIC_URL =
+  process.env.PARAMETRIC_APP_URL?.trim() || 'http://localhost:3002';
+const CORPUS_URL =
+  process.env.CORPUS_APP_URL?.trim() || 'http://localhost:3001';
 const ALLOWED_APP_ORIGINS = (
-  process.env.AUTH_ALLOWED_ORIGINS ??
-  'https://parametric.shark5060.net,https://corpus.shark5060.net'
+  process.env.AUTH_ALLOWED_ORIGINS ?? [PARAMETRIC_URL, CORPUS_URL].join(',')
 )
   .split(',')
   .map((v) => v.trim())
@@ -104,14 +107,11 @@ function preferredAppUrl(keyword: string, fallback: string): string {
   return match ?? fallback;
 }
 
-const PARAMETRIC_URL = preferredAppUrl(
-  'parametric',
-  'https://parametric.shark5060.net',
-);
-const CORPUS_URL = preferredAppUrl('corpus', 'https://corpus.shark5060.net');
+const PARAMETRIC_APP_URL = preferredAppUrl('parametric', PARAMETRIC_URL);
+const CORPUS_APP_URL = preferredAppUrl('corpus', CORPUS_URL);
 const APP_URL_BY_ID: Record<string, string> = {
-  parametric: PARAMETRIC_URL,
-  corpus: CORPUS_URL,
+  parametric: PARAMETRIC_APP_URL,
+  corpus: CORPUS_APP_URL,
 };
 const APP_META_BY_ID: Record<string, { label: string; subtitle: string }> = {
   parametric: {
@@ -125,7 +125,8 @@ const APP_META_BY_ID: Record<string, { label: string; subtitle: string }> = {
 };
 const SHARED_THEME_STORAGE_KEY = 'dal.theme.mode';
 const SHARED_THEME_COOKIE = 'dal.theme.mode';
-const SHARED_THEME_COOKIE_DOMAIN = '.shark5060.net';
+const SHARED_THEME_COOKIE_DOMAIN =
+  process.env.SHARED_THEME_COOKIE_DOMAIN?.trim() || COOKIE_DOMAIN || '';
 const SHARED_THEME_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 function escapeHtml(input: string): string {
@@ -172,7 +173,9 @@ function renderSharedThemeScript(defaultMode: 'light' | 'dark'): string {
   const writeCookie = (mode) => {
     const base = THEME_COOKIE + '=' + encodeURIComponent(mode) + '; Max-Age=' + ONE_YEAR_SECONDS + '; Path=/; SameSite=Lax' + secure;
     document.cookie = base;
-    document.cookie = base + '; Domain=' + THEME_COOKIE_DOMAIN;
+    if (THEME_COOKIE_DOMAIN) {
+      document.cookie = base + '; Domain=' + THEME_COOKIE_DOMAIN;
+    }
   };
 
   const syncButton = (mode) => {
@@ -245,6 +248,16 @@ const baselineLimiter = rateLimit({
     req.path === '/branding/feathers.png',
 });
 app.use(baselineLimiter);
+
+function clearAuthCookies(res: express.Response): void {
+  const options: express.CookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    domain: COOKIE_DOMAIN,
+  };
+  res.clearCookie(COOKIE_NAME, options);
+}
 
 const STATIC_ROOT = APP_ROOT;
 const staticAssetLimiter = rateLimit({
@@ -899,12 +912,7 @@ app.get('/logout', (req, res) => {
       : '';
   const next = sanitizeNextUrl(nextInput, '/login');
   req.session.destroy(() => {
-    res.clearCookie(COOKIE_NAME, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      domain: COOKIE_DOMAIN,
-    });
+    clearAuthCookies(res);
     res.redirect(next);
   });
 });
@@ -1007,12 +1015,7 @@ app.post('/api/auth/logout', csrfSynchronisedProtection, (req, res) => {
   const actorUserId =
     typeof req.session.user_id === 'number' ? req.session.user_id : null;
   req.session.destroy(() => {
-    res.clearCookie(COOKIE_NAME, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      domain: COOKIE_DOMAIN,
-    });
+    clearAuthCookies(res);
     appendAuditLog({
       actorUserId,
       eventType: 'auth.logout',
@@ -1128,12 +1131,7 @@ app.post(
       targetId: String(userId),
       ip: requestIp(req),
     });
-    res.clearCookie(COOKIE_NAME, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      domain: COOKIE_DOMAIN,
-    });
+    clearAuthCookies(res);
     res.json({ success: true });
   },
 );

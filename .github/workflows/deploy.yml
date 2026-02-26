@@ -1,4 +1,4 @@
-name: Deploy Auth - Shared Auth Provider
+name: Deploy Auth
 
 permissions:
   contents: read

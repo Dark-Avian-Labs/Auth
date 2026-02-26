@@ -1406,8 +1406,8 @@ app.get('/admin', requireAdmin, (req, res) => {
         <h1 style="margin:0 0 8px;">Central Dark Avian Labs Admin</h1>
         <p class="muted" style="margin:0 0 10px;">Manage users and app permissions.</p>
         <div class="row">
-          <a class="btn" href="${PARAMETRIC_URL}">Back to Parametric</a>
-          <a class="btn" href="${CORPUS_URL}">Back to Corpus</a>
+          <a class="btn" href="${PARAMETRIC_APP_URL}">Back to Parametric</a>
+          <a class="btn" href="${CORPUS_APP_URL}">Back to Corpus</a>
           <form method="GET" action="/logout"><button class="btn" type="submit">Logout</button></form>
         </div>
       </section>
@@ -1516,6 +1516,7 @@ app.get('/admin', requireAdmin, (req, res) => {
           '<td>' + roleBadge(user) + '</td>' +
           '<td class="split">' +
             '<button class="btn" data-action="configure">Configure</button>' +
+            '<button class="btn" data-action="change-password">Change password</button>' +
             '<button class="btn" data-action="toggle-admin">' + (user.is_admin ? 'Remove admin' : 'Make admin') + '</button>' +
             (currentUserId === userId ? '' : '<button class="btn" data-action="delete">Delete</button>') +
           '</td>' +
@@ -1560,6 +1561,29 @@ app.get('/admin', requireAdmin, (req, res) => {
         if (!response.ok) return showMessage(body?.error || 'Role update failed.', true);
         showMessage('Role updated.');
         await loadUsers();
+      }
+
+      async function changePassword(userId, username) {
+        const password = prompt('Set a new password for ' + username + ':');
+        if (password === null) return;
+        const trimmed = password.trim();
+        if (!trimmed) return showMessage('Password cannot be empty.', true);
+        if (trimmed.length < 8) {
+          return showMessage('Password must be at least 8 characters.', true);
+        }
+        const confirmPassword = prompt('Confirm new password:');
+        if (confirmPassword === null) return;
+        if (trimmed !== confirmPassword.trim()) {
+          return showMessage('Passwords do not match.', true);
+        }
+        const { response, body } = await api('/api/admin/users/' + userId, {
+          method: 'PATCH',
+          body: JSON.stringify({ password: trimmed }),
+        });
+        if (!response.ok) {
+          return showMessage(body?.error || 'Password update failed.', true);
+        }
+        showMessage('Password updated.');
       }
 
       async function deleteUser(userId) {
@@ -1621,6 +1645,7 @@ app.get('/admin', requireAdmin, (req, res) => {
         const user = usersById.get(userId);
         if (!user) return;
         if (action === 'configure') return openConfig(userId);
+        if (action === 'change-password') return changePassword(userId, String(user.username || userId));
         if (action === 'toggle-admin') return updateAdmin(userId, Boolean(user.is_admin));
         if (action === 'delete') return deleteUser(userId);
       }

@@ -7,10 +7,13 @@ on:
   push:
     branches: [main]
     paths:
-      - 'src/**'
+      - 'server/**'
+      - 'client/**'
+      - 'index.html'
       - 'package*.json'
       - 'dark-avian-labs.config.cjs'
-      - 'tsconfig.json'
+      - 'tsconfig*.json'
+      - 'vite.config.ts'
       - 'favicon.ico'
       - 'feathers.png'
       - 'background.txt'

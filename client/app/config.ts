@@ -38,7 +38,7 @@ export const SEARCH_PLACEHOLDER = readTrimmedEnv(
 
 export const AUTH_ADMIN_URL = readTrimmedEnv(
   import.meta.env.VITE_AUTH_ADMIN_URL as string | undefined,
-  'http://localhost:3010/admin',
+  'http://localhost:3000/admin',
 );
 
 export const ALLOWED_NEXT_ORIGINS = readCsvEnv(

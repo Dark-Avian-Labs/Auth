@@ -7,7 +7,7 @@ module.exports = {
     {
       name: 'Auth',
       namespace: 'dark-avian-labs',
-      script: './dist/index.js',
+      script: './dist/server/index.js',
       cwd: path.join(APPS_ROOT, 'auth'),
       interpreter: 'node',
       node_args: '--env-file=.env',
@@ -26,12 +26,13 @@ module.exports = {
       kill_timeout: 5000,
       env: {
         NODE_ENV: 'production',
+        PORT: '3000',
       },
     },
     {
       name: 'Corpus',
       namespace: 'dark-avian-labs',
-      script: './dist/index.js',
+      script: './dist/server/index.js',
       cwd: path.join(APPS_ROOT, 'corpus'),
       interpreter: 'node',
       node_args: '--env-file=.env',
@@ -50,6 +51,7 @@ module.exports = {
       kill_timeout: 5000,
       env: {
         NODE_ENV: 'production',
+        PORT: '3001',
       },
     },
     {
@@ -74,6 +76,7 @@ module.exports = {
       kill_timeout: 5000,
       env: {
         NODE_ENV: 'production',
+        PORT: '3002',
       },
     },
   ],

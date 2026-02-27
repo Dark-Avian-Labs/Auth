@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_');
-  const devApiTarget = env.VITE_DEV_API_TARGET || 'http://127.0.0.1:3010';
+  const devApiTarget = env.VITE_DEV_API_TARGET || 'http://127.0.0.1:3000';
   const base = env.VITE_BASE_PATH || '/';
   const sharedProxy = {
     target: devApiTarget,

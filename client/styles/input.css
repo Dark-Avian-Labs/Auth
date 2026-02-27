@@ -184,6 +184,19 @@ html.theme-light {
     backdrop-filter: blur(12px);
   }
 
+  .profile-avatar-btn {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .profile-avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center bottom;
+    border-radius: 999px;
+  }
+
   .user-menu {
     position: absolute;
     right: 0;

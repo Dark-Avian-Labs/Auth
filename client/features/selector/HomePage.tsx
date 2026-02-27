@@ -72,11 +72,7 @@ export function HomePage() {
                 <CardContent label={card.label} subtitle={card.subtitle} />
               </a>
             ) : (
-              <Link
-                key={card.id}
-                to={card.url}
-                className={cardClassName}
-              >
+              <Link key={card.id} to={card.url} className={cardClassName}>
                 <CardContent label={card.label} subtitle={card.subtitle} />
               </Link>
             ),

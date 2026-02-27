@@ -121,8 +121,8 @@ class RouteErrorBoundary extends Component<
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
           <p className="text-sm text-muted">
-            We could not recover after multiple retry attempts. Please reload the
-            app to continue.
+            We could not recover after multiple retry attempts. Please reload
+            the app to continue.
           </p>
           <button
             type="button"
@@ -187,34 +187,44 @@ function RouteFallback() {
 
 function LoginRoute() {
   const { auth } = useAuth();
-  const status = auth.status as string;
-  if (status === 'ok') {
-    return <Navigate to={APP_PATHS.home} replace />;
+  switch (auth.status) {
+    case 'ok':
+      return <Navigate to={APP_PATHS.home} replace />;
+    case 'loading':
+      return <RouteFallback />;
+    case 'unauthenticated':
+      return <LoginPage />;
+    case 'error':
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
+          <h1 className="text-lg font-semibold">Authentication unavailable</h1>
+          <p className="text-sm text-muted">
+            We could not verify your session. Please refresh and try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="rounded-md border border-default px-3 py-1.5 text-sm"
+          >
+            Reload
+          </button>
+        </div>
+      );
+    default:
+      if (import.meta.env.DEV) {
+        console.warn('Unexpected auth status in LoginRoute:', auth.status);
+      }
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
+          <h1 className="text-lg font-semibold">
+            Checking authentication status
+          </h1>
+          <p className="text-sm text-muted">
+            Please wait while we finish loading your session.
+          </p>
+        </div>
+      );
   }
-  if (status === 'loading') {
-    return <RouteFallback />;
-  }
-  if (status === 'unauthenticated') {
-    return <LoginPage />;
-  }
-  if (status === 'error') {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
-        <h1 className="text-lg font-semibold">Authentication unavailable</h1>
-        <p className="text-sm text-muted">
-          We could not verify your session. Please refresh and try again.
-        </p>
-      </div>
-    );
-  }
-  return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
-      <h1 className="text-lg font-semibold">Checking authentication status</h1>
-      <p className="text-sm text-muted">
-        Please wait while we finish loading your session.
-      </p>
-    </div>
-  );
 }
 
 function NotFoundPage() {

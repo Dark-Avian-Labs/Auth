@@ -264,9 +264,9 @@ app.use(
             ? 403
             : 500;
     const safeMessage =
-      process.env.NODE_ENV === 'production'
+      NODE_ENV === 'production' && status >= 500
         ? 'Internal server error'
-        : error.message ?? 'Internal server error';
+        : (error.message ?? 'Internal server error');
     res.status(status).json({ error: safeMessage });
   },
 );

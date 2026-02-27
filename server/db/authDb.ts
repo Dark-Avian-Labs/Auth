@@ -138,10 +138,7 @@ export function getGamesForUser(userId: number): string[] {
   return rows.map((row) => row.game_id);
 }
 
-function queryAndGroupByUserId<
-  TRow extends { user_id: number },
-  TValue,
->(
+function queryAndGroupByUserId<TRow extends { user_id: number }, TValue>(
   userIds: number[],
   buildSql: (placeholders: string) => string,
   mapRow: (row: TRow) => TValue,

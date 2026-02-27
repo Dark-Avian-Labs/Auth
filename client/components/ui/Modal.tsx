@@ -16,6 +16,11 @@ export function Modal({
   ariaLabelledBy,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) {
@@ -43,7 +48,7 @@ export function Modal({
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -97,7 +102,7 @@ export function Modal({
         previousActiveElement.focus();
       }
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) {
     return null;

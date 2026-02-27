@@ -571,8 +571,10 @@ export function AdminPage() {
               }
 
               const firstElement = focusableElements[0];
-              const lastElement = focusableElements[focusableElements.length - 1];
-              const activeElement = document.activeElement as HTMLElement | null;
+              const lastElement =
+                focusableElements[focusableElements.length - 1];
+              const activeElement =
+                document.activeElement as HTMLElement | null;
               const modalElement = passwordModalRef.current;
 
               if (event.shiftKey) {
@@ -598,51 +600,51 @@ export function AdminPage() {
             }}
           >
             <GlassCard className="p-6">
-            <h2
-              id="admin-password-title"
-              className="text-lg font-semibold text-foreground"
-            >
-              Change password for {passwordUser.username}
-            </h2>
-            <label
-              htmlFor={passwordInputId}
-              className="mt-3 block text-sm text-muted"
-            >
-              New password
-            </label>
-            <input
-              id={passwordInputId}
-              type="password"
-              autoComplete="new-password"
-              className="form-input mt-2 w-full"
-              value={passwordValue}
-              autoFocus
-              onChange={(event) => setPasswordValue(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  submitPasswordChange();
-                }
-              }}
-            />
-            <div className="mt-4 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={closePasswordModal}
-                disabled={passwordSubmitting}
+              <h2
+                id="admin-password-title"
+                className="text-lg font-semibold text-foreground"
               >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                variant="accent"
-                onClick={submitPasswordChange}
-                disabled={passwordSubmitting}
+                Change password for {passwordUser.username}
+              </h2>
+              <label
+                htmlFor={passwordInputId}
+                className="mt-3 block text-sm text-muted"
               >
-                {passwordSubmitting ? 'Saving...' : 'Confirm'}
-              </Button>
-            </div>
+                New password
+              </label>
+              <input
+                id={passwordInputId}
+                type="password"
+                autoComplete="new-password"
+                className="form-input mt-2 w-full"
+                value={passwordValue}
+                autoFocus
+                onChange={(event) => setPasswordValue(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    submitPasswordChange();
+                  }
+                }}
+              />
+              <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={closePasswordModal}
+                  disabled={passwordSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="accent"
+                  onClick={submitPasswordChange}
+                  disabled={passwordSubmitting}
+                >
+                  {passwordSubmitting ? 'Saving...' : 'Confirm'}
+                </Button>
+              </div>
             </GlassCard>
           </div>
         </div>

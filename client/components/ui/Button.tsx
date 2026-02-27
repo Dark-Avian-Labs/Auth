@@ -3,6 +3,7 @@ import {
   isValidElement,
   type AnchorHTMLAttributes,
   type ButtonHTMLAttributes,
+  type HTMLAttributes,
   type ReactElement,
 } from 'react';
 
@@ -70,12 +71,13 @@ export function Button(props: ButtonProps | LinkButtonProps) {
       ...childProps
     } = props as ButtonProps;
 
-    const childClassName = (children as ReactElement<{ className?: string }>)
-      .props.className;
+    type ChildProps = HTMLAttributes<HTMLElement> & Record<string, unknown>;
+    const child = children as ReactElement<ChildProps>;
+    const childClassName = child.props.className;
     const mergedClassName = [classes, childClassName].filter(Boolean).join(' ');
 
-    return cloneElement(children as ReactElement, {
-      ...childProps,
+    return cloneElement(child, {
+      ...(childProps as Partial<ChildProps>),
       className: mergedClassName,
     });
   }

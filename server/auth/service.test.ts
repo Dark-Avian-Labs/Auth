@@ -17,7 +17,10 @@ describe('sanitizeNextUrl', () => {
   });
 
   it('returns the exact fallback when sanitizeNextUrl receives null at runtime', () => {
-    const value = sanitizeNextUrl(null as unknown as string | undefined, '/login');
+    const value = sanitizeNextUrl(
+      null as unknown as string | undefined,
+      '/login',
+    );
     expect(value).toBe(fallback);
   });
 
@@ -81,8 +84,10 @@ describe('sanitizeNextUrl', () => {
   });
 
   it('preserves fragments when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
-    const expected = new URL('/dashboard#section', AUTH_PUBLIC_BASE_URL)
-      .toString();
+    const expected = new URL(
+      '/dashboard#section',
+      AUTH_PUBLIC_BASE_URL,
+    ).toString();
     const value = sanitizeNextUrl('/dashboard#section', '/login');
     expect(value).toBe(expected);
   });

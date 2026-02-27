@@ -184,10 +184,10 @@ adminApiRouter.patch(
         typeof req.body?.password === 'string' &&
         req.body.password.length > 0
       ) {
-        if (req.body.password.length < 8) {
+        if (req.body.password.length < 8 || req.body.password.length > 128) {
           res
             .status(400)
-            .json({ error: 'Password must be at least 8 characters.' });
+            .json({ error: 'Password must be between 8 and 128 characters.' });
           return;
         }
         updates.push('password_hash = ?');

@@ -11,6 +11,21 @@ describe('sanitizeNextUrl', () => {
     expect(value).toBe(fallback);
   });
 
+  it('returns the exact fallback when sanitizeNextUrl receives an empty string', () => {
+    const value = sanitizeNextUrl('', '/login');
+    expect(value).toBe(fallback);
+  });
+
+  it('returns the exact fallback when sanitizeNextUrl receives null at runtime', () => {
+    const value = sanitizeNextUrl(null as unknown as string | undefined, '/login');
+    expect(value).toBe(fallback);
+  });
+
+  it('returns the exact fallback when sanitizeNextUrl receives whitespace-only input', () => {
+    const value = sanitizeNextUrl('   ', '/login');
+    expect(value).toBe(fallback);
+  });
+
   it('returns the exact fallback when sanitizeNextUrl receives an invalid absolute URL', () => {
     const value = sanitizeNextUrl('not-a-url', '/login');
     expect(value).toBe(fallback);
@@ -48,5 +63,27 @@ describe('sanitizeNextUrl', () => {
     const allowed = new URL('/dashboard', AUTH_PUBLIC_BASE_URL).toString();
     const value = sanitizeNextUrl(allowed, '/login');
     expect(value).toBe(allowed);
+  });
+
+  it('preserves a root-relative path when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
+    const expected = new URL('/dashboard', AUTH_PUBLIC_BASE_URL).toString();
+    const value = sanitizeNextUrl('/dashboard', '/login');
+    expect(value).toBe(expected);
+  });
+
+  it('preserves query parameters when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
+    const expected = new URL(
+      '/dashboard?tab=settings',
+      AUTH_PUBLIC_BASE_URL,
+    ).toString();
+    const value = sanitizeNextUrl('/dashboard?tab=settings', '/login');
+    expect(value).toBe(expected);
+  });
+
+  it('preserves fragments when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
+    const expected = new URL('/dashboard#section', AUTH_PUBLIC_BASE_URL)
+      .toString();
+    const value = sanitizeNextUrl('/dashboard#section', '/login');
+    expect(value).toBe(expected);
   });
 });

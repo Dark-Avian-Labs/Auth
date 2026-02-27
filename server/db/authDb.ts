@@ -138,33 +138,46 @@ export function getGamesForUser(userId: number): string[] {
   return rows.map((row) => row.game_id);
 }
 
-export function getGamesForUsers(userIds: number[]): Record<number, string[]> {
+function queryAndGroupByUserId<
+  TRow extends { user_id: number },
+  TValue,
+>(
+  userIds: number[],
+  buildSql: (placeholders: string) => string,
+  mapRow: (row: TRow) => TValue,
+): Record<number, TValue[]> {
   const uniqueUserIds = Array.from(
     new Set(userIds.filter((value) => Number.isInteger(value) && value > 0)),
   );
-  const gamesByUserId: Record<number, string[]> = {};
+  const groupedByUserId: Record<number, TValue[]> = {};
   for (const userId of uniqueUserIds) {
-    gamesByUserId[userId] = [];
+    groupedByUserId[userId] = [];
   }
   if (uniqueUserIds.length === 0) {
-    return gamesByUserId;
+    return groupedByUserId;
   }
 
   const placeholders = uniqueUserIds.map(() => '?').join(', ');
   const rows = db
-    .prepare(
-      `SELECT user_id, game_id
+    .prepare(buildSql(placeholders))
+    .all(...uniqueUserIds) as TRow[];
+
+  for (const row of rows) {
+    groupedByUserId[row.user_id] ??= [];
+    groupedByUserId[row.user_id].push(mapRow(row));
+  }
+  return groupedByUserId;
+}
+
+export function getGamesForUsers(userIds: number[]): Record<number, string[]> {
+  return queryAndGroupByUserId<{ user_id: number; game_id: string }, string>(
+    userIds,
+    (placeholders) => `SELECT user_id, game_id
        FROM user_game_access
        WHERE user_id IN (${placeholders})
        ORDER BY user_id, game_id`,
-    )
-    .all(...uniqueUserIds) as Array<{ user_id: number; game_id: string }>;
-
-  for (const row of rows) {
-    gamesByUserId[row.user_id] ??= [];
-    gamesByUserId[row.user_id].push(row.game_id);
-  }
-  return gamesByUserId;
+    (row) => row.game_id,
+  );
 }
 
 export function hasAppAccess(userId: number, appId: string): boolean {
@@ -211,42 +224,20 @@ export function listPermissions(
 export function listPermissionsForUsers(
   userIds: number[],
 ): Record<number, Array<{ app_id: string; permission: string }>> {
-  const uniqueUserIds = Array.from(
-    new Set(userIds.filter((value) => Number.isInteger(value) && value > 0)),
-  );
-  const permissionsByUserId: Record<
-    number,
-    Array<{ app_id: string; permission: string }>
-  > = {};
-  for (const userId of uniqueUserIds) {
-    permissionsByUserId[userId] = [];
-  }
-  if (uniqueUserIds.length === 0) {
-    return permissionsByUserId;
-  }
-
-  const placeholders = uniqueUserIds.map(() => '?').join(', ');
-  const rows = db
-    .prepare(
-      `SELECT user_id, app_id, permission
+  return queryAndGroupByUserId<
+    { user_id: number; app_id: string; permission: string },
+    { app_id: string; permission: string }
+  >(
+    userIds,
+    (placeholders) => `SELECT user_id, app_id, permission
        FROM user_app_permissions
        WHERE user_id IN (${placeholders})
        ORDER BY user_id, app_id, permission`,
-    )
-    .all(...uniqueUserIds) as Array<{
-    user_id: number;
-    app_id: string;
-    permission: string;
-  }>;
-
-  for (const row of rows) {
-    permissionsByUserId[row.user_id] ??= [];
-    permissionsByUserId[row.user_id].push({
+    (row) => ({
       app_id: row.app_id,
       permission: row.permission,
-    });
-  }
-  return permissionsByUserId;
+    }),
+  );
 }
 
 export function replacePermissions(

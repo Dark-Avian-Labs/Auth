@@ -66,7 +66,6 @@ export function Layout() {
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMenuOpen(false);
-        triggerRef.current?.focus();
       }
     };
     document.addEventListener('keydown', onEscape);

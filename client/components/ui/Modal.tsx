@@ -5,9 +5,16 @@ interface ModalProps {
   onClose: () => void;
   children: ReactNode;
   className?: string;
+  ariaLabelledBy?: string;
 }
 
-export function Modal({ open, onClose, children, className }: ModalProps) {
+export function Modal({
+  open,
+  onClose,
+  children,
+  className,
+  ariaLabelledBy,
+}: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -15,6 +22,7 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
       return undefined;
     }
 
+    const previousActiveElement = document.activeElement;
     const modalElement = modalRef.current;
     if (!modalElement) {
       return undefined;
@@ -80,6 +88,14 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
+      if (
+        previousActiveElement instanceof HTMLElement &&
+        document.contains(previousActiveElement) &&
+        previousActiveElement !== document.body &&
+        !previousActiveElement.hasAttribute('disabled')
+      ) {
+        previousActiveElement.focus();
+      }
     };
   }, [open, onClose]);
 
@@ -100,6 +116,7 @@ export function Modal({ open, onClose, children, className }: ModalProps) {
         className={modalClassName}
         role="dialog"
         aria-modal="true"
+        aria-labelledby={ariaLabelledBy}
         tabIndex={-1}
         onClick={stopPropagation}
       >

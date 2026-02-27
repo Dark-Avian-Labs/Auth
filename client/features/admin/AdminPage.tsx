@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { AVAILABLE_APPS } from '../../app/config';
@@ -45,6 +45,19 @@ export function AdminPage() {
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
   const passwordInputId = 'admin-password-input';
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const passwordModalRef = useRef<HTMLDivElement | null>(null);
+
+  const getPasswordModalFocusableElements = () => {
+    const modalElement = passwordModalRef.current;
+    if (!modalElement) return [] as HTMLElement[];
+
+    const focusableSelector =
+      'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+
+    return Array.from(
+      modalElement.querySelectorAll<HTMLElement>(focusableSelector),
+    );
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +91,18 @@ export function AdminPage() {
       cancelled = true;
     };
   }, [auth.user?.is_admin]);
+
+  useEffect(() => {
+    if (!passwordUser) return;
+
+    const focusableElements = getPasswordModalFocusableElements();
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+      return;
+    }
+
+    passwordModalRef.current?.focus();
+  }, [passwordUser]);
 
   if (auth.status !== 'ok') {
     return <Navigate to={APP_PATHS.login} replace />;
@@ -259,6 +284,20 @@ export function AdminPage() {
           : 'Network error updating password.',
       );
     }
+  };
+
+  const submitPasswordChange = () => {
+    if (!passwordUser || passwordSubmitting) return;
+    const nextValue = passwordValue;
+    if (!nextValue) {
+      setMessage(null);
+      setError('Password is required.');
+      return;
+    }
+    setPasswordSubmitting(true);
+    void changePassword(passwordUser, nextValue).finally(() => {
+      setPasswordSubmitting(false);
+    });
   };
 
   const updateAppAccess = async (
@@ -503,21 +542,62 @@ export function AdminPage() {
           role="dialog"
           aria-modal="true"
           aria-labelledby="admin-password-title"
-          onMouseDown={(event) => {
+          onClick={(event) => {
             if (event.target === event.currentTarget && !passwordSubmitting) {
               closePasswordModal();
             }
           }}
         >
-          <GlassCard
-            className="w-full max-w-md p-6"
-            onKeyDown={(event) => {
+          <div
+            ref={passwordModalRef}
+            className="w-full max-w-md"
+            tabIndex={-1}
+            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
               if (event.key === 'Escape' && !passwordSubmitting) {
                 event.preventDefault();
                 closePasswordModal();
+                return;
+              }
+
+              if (event.key !== 'Tab') {
+                return;
+              }
+
+              const focusableElements = getPasswordModalFocusableElements();
+              if (focusableElements.length === 0) {
+                event.preventDefault();
+                passwordModalRef.current?.focus();
+                return;
+              }
+
+              const firstElement = focusableElements[0];
+              const lastElement = focusableElements[focusableElements.length - 1];
+              const activeElement = document.activeElement as HTMLElement | null;
+              const modalElement = passwordModalRef.current;
+
+              if (event.shiftKey) {
+                if (
+                  !activeElement ||
+                  activeElement === firstElement ||
+                  !modalElement?.contains(activeElement)
+                ) {
+                  event.preventDefault();
+                  lastElement.focus();
+                }
+                return;
+              }
+
+              if (
+                !activeElement ||
+                activeElement === lastElement ||
+                !modalElement?.contains(activeElement)
+              ) {
+                event.preventDefault();
+                firstElement.focus();
               }
             }}
           >
+            <GlassCard className="p-6">
             <h2
               id="admin-password-title"
               className="text-lg font-semibold text-foreground"
@@ -541,17 +621,7 @@ export function AdminPage() {
               onKeyDown={(event) => {
                 if (event.key === 'Enter') {
                   event.preventDefault();
-                  if (!passwordUser || passwordSubmitting) return;
-                  const nextValue = passwordValue;
-                  if (!nextValue) {
-                    setMessage(null);
-                    setError('Password is required.');
-                    return;
-                  }
-                  setPasswordSubmitting(true);
-                  void changePassword(passwordUser, nextValue).finally(() => {
-                    setPasswordSubmitting(false);
-                  });
+                  submitPasswordChange();
                 }
               }}
             />
@@ -567,25 +637,14 @@ export function AdminPage() {
               <Button
                 type="button"
                 variant="accent"
-                onClick={() => {
-                  if (!passwordUser || passwordSubmitting) return;
-                  const nextValue = passwordValue;
-                  if (!nextValue) {
-                    setMessage(null);
-                    setError('Password is required.');
-                    return;
-                  }
-                  setPasswordSubmitting(true);
-                  void changePassword(passwordUser, nextValue).finally(() => {
-                    setPasswordSubmitting(false);
-                  });
-                }}
+                onClick={submitPasswordChange}
                 disabled={passwordSubmitting}
               >
                 {passwordSubmitting ? 'Saving...' : 'Confirm'}
               </Button>
             </div>
-          </GlassCard>
+            </GlassCard>
+          </div>
         </div>
       ) : null}
     </div>

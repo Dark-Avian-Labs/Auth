@@ -224,7 +224,7 @@ export function LegalPage() {
             <a
               className="text-foreground underline underline-offset-2"
               href="https://www.netcup.de/"
-              aria-label="https://www.netcup.de/ (opens in a new tab)"
+              aria-label="Netcup website, opens in new tab"
               target="_blank"
               rel="noreferrer"
             >
@@ -236,7 +236,7 @@ export function LegalPage() {
             <a
               className="text-foreground underline underline-offset-2"
               href="https://www.netcup.de/kontakt/datenschutzerklaerung.php"
-              aria-label="https://www.netcup.de/kontakt/datenschutzerklaerung.php (opens in a new tab)"
+              aria-label="Netcup privacy policy, opens in new tab"
               target="_blank"
               rel="noreferrer"
             >
@@ -248,7 +248,7 @@ export function LegalPage() {
             <a
               className="text-foreground underline underline-offset-2"
               href="https://helpcenter.netcup.com/de/wiki/general/avv/"
-              aria-label="https://helpcenter.netcup.com/de/wiki/general/avv/ (opens in a new tab)"
+              aria-label="Netcup data processing agreement, opens in new tab"
               target="_blank"
               rel="noreferrer"
             >

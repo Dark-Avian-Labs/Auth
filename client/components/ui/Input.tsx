@@ -2,7 +2,6 @@ import { forwardRef, type InputHTMLAttributes } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   readOnlyStyle?: boolean;
-  className?: string;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(

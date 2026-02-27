@@ -263,9 +263,11 @@ app.use(
           : error.name === 'ForbiddenError'
             ? 403
             : 500;
-    res
-      .status(status)
-      .json({ error: error.message ?? 'Internal server error' });
+    const safeMessage =
+      process.env.NODE_ENV === 'production'
+        ? 'Internal server error'
+        : error.message ?? 'Internal server error';
+    res.status(status).json({ error: safeMessage });
   },
 );
 

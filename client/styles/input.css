@@ -26,8 +26,8 @@
 html.theme-light {
   --color-foreground: #000000;
   --color-muted: #4b5563;
-  --color-on-light: 248, 250, 252;
-  --color-on-dark: 15, 23, 42;
+  --color-on-light: 15, 23, 42;
+  --color-on-dark: 248, 250, 252;
   --color-glass: rgba(255, 255, 255, 0.5);
   --color-glass-border: rgba(57, 57, 57, 0.2);
   --color-glass-border-hover: rgba(57, 57, 57, 0.32);
@@ -310,19 +310,19 @@ html.theme-light {
   .text-danger {
     color: #f87171;
   }
-}
 
-.bg-art {
-  white-space: pre;
-  color: color-mix(in srgb, var(--color-foreground) 5%, transparent);
-  z-index: var(--z-base);
-  pointer-events: none;
-  user-select: none;
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 10px;
-  line-height: 1.2;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  .bg-art {
+    white-space: pre;
+    color: color-mix(in srgb, var(--color-foreground) 5%, transparent);
+    z-index: var(--z-base);
+    pointer-events: none;
+    user-select: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 10px;
+    line-height: 1.2;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
 }

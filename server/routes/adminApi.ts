@@ -103,10 +103,10 @@ adminApiRouter.post(
         });
         return;
       }
-      if (password.length < 8) {
+      if (password.length < 8 || password.length > 128) {
         res
           .status(400)
-          .json({ error: 'Password must be at least 8 characters.' });
+          .json({ error: 'Password must be between 8 and 128 characters.' });
         return;
       }
 
@@ -142,79 +142,89 @@ adminApiRouter.post(
   },
 );
 
-adminApiRouter.patch('/users/:id', async (req: Request, res: Response) => {
-  const userId = parseInt(String(req.params.id), 10);
-  if (!Number.isInteger(userId) || userId <= 0) {
-    res.status(400).json({ error: 'Invalid user id' });
-    return;
-  }
+adminApiRouter.patch(
+  '/users/:id',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const userId = parseInt(String(req.params.id), 10);
+      if (!Number.isInteger(userId) || userId <= 0) {
+        res.status(400).json({ error: 'Invalid user id' });
+        return;
+      }
 
-  const updates: string[] = [];
-  const values: Array<string | number> = [];
-  const changes: Record<string, string | boolean> = {};
-  let passwordUpdated = false;
-  if (typeof req.body?.username === 'string' && req.body.username.trim()) {
-    const username = sanitizeUsername(req.body.username);
-    if (!username) {
-      res.status(400).json({ error: 'Invalid username format.' });
-      return;
-    }
-    const existing = db
-      .prepare(
-        'SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?',
-      )
-      .get(username, userId) as { id: number } | undefined;
-    if (existing) {
-      res.status(409).json({ error: 'Username already exists' });
-      return;
-    }
-    updates.push('username = ?');
-    values.push(username);
-    changes.username = username;
-  }
-  if (typeof req.body?.is_admin === 'boolean') {
-    updates.push('is_admin = ?');
-    values.push(req.body.is_admin ? 1 : 0);
-    changes.is_admin = req.body.is_admin;
-  }
-  if (typeof req.body?.password === 'string' && req.body.password.length > 0) {
-    if (req.body.password.length < 8) {
-      res
-        .status(400)
-        .json({ error: 'Password must be at least 8 characters.' });
-      return;
-    }
-    updates.push('password_hash = ?');
-    values.push(await hashPassword(req.body.password));
-    passwordUpdated = true;
-    changes.password_hash = '[updated]';
-  }
-  if (updates.length === 0) {
-    res.status(400).json({ error: 'No updates provided' });
-    return;
-  }
+      const updates: string[] = [];
+      const values: Array<string | number> = [];
+      const changes: Record<string, string | boolean> = {};
+      let passwordUpdated = false;
+      if (typeof req.body?.username === 'string' && req.body.username.trim()) {
+        const username = sanitizeUsername(req.body.username);
+        if (!username) {
+          res.status(400).json({ error: 'Invalid username format.' });
+          return;
+        }
+        const existing = db
+          .prepare(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?',
+          )
+          .get(username, userId) as { id: number } | undefined;
+        if (existing) {
+          res.status(409).json({ error: 'Username already exists' });
+          return;
+        }
+        updates.push('username = ?');
+        values.push(username);
+        changes.username = username;
+      }
+      if (typeof req.body?.is_admin === 'boolean') {
+        updates.push('is_admin = ?');
+        values.push(req.body.is_admin ? 1 : 0);
+        changes.is_admin = req.body.is_admin;
+      }
+      if (
+        typeof req.body?.password === 'string' &&
+        req.body.password.length > 0
+      ) {
+        if (req.body.password.length < 8) {
+          res
+            .status(400)
+            .json({ error: 'Password must be at least 8 characters.' });
+          return;
+        }
+        updates.push('password_hash = ?');
+        values.push(await hashPassword(req.body.password));
+        passwordUpdated = true;
+        changes.password_hash = '[updated]';
+      }
+      if (updates.length === 0) {
+        res.status(400).json({ error: 'No updates provided' });
+        return;
+      }
 
-  values.push(userId);
-  const result = db
-    .prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`)
-    .run(...values);
-  if (result.changes < 1) {
-    res.status(404).json({ error: 'User not found' });
-    return;
-  }
-  if (typeof req.body?.is_admin === 'boolean' || passwordUpdated) {
-    revokeSessionsForUser(userId);
-  }
-  appendAuditLog({
-    actorUserId: req.session.user_id!,
-    eventType: 'admin.user.update',
-    targetType: 'user',
-    targetId: String(userId),
-    detailsJson: JSON.stringify({ changes }),
-    ip: requestIp(req),
-  });
-  res.json({ success: true });
-});
+      values.push(userId);
+      const result = db
+        .prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`)
+        .run(...values);
+      if (result.changes < 1) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+      if (typeof req.body?.is_admin === 'boolean' || passwordUpdated) {
+        revokeSessionsForUser(userId);
+      }
+      appendAuditLog({
+        actorUserId: req.session.user_id!,
+        eventType: 'admin.user.update',
+        targetType: 'user',
+        targetId: String(userId),
+        detailsJson: JSON.stringify({ changes }),
+        ip: requestIp(req),
+      });
+      res.json({ success: true });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 adminApiRouter.delete('/users/:id', (req: Request, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
@@ -276,6 +286,11 @@ adminApiRouter.put('/users/:id/permissions', (req: Request, res: Response) => {
 
   if (!Number.isInteger(userId) || userId <= 0 || !appId) {
     res.status(400).json({ error: 'Invalid user id or app_id' });
+    return;
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    res.status(404).json({ error: 'User not found' });
     return;
   }
 

@@ -43,7 +43,10 @@ type RouteErrorBoundaryState = {
   hasError: boolean;
   isChunkError: boolean;
   retryCount: number;
+  exceededRetryLimit: boolean;
 };
+
+const MAX_RETRIES = 3;
 
 function isChunkLoadError(error: unknown) {
   const message =
@@ -59,7 +62,8 @@ function isChunkLoadError(error: unknown) {
     lowered.includes('load chunk') ||
     lowered.includes('failed to fetch dynamically imported module') ||
     lowered.includes('importing a module script failed') ||
-    lowered.includes('failed to fetch')
+    (lowered.includes('failed to fetch') &&
+      (lowered.includes('chunk') || /\.chunk\.|\/static\/js\//.test(message)))
   );
 }
 
@@ -71,6 +75,7 @@ class RouteErrorBoundary extends Component<
     hasError: false,
     isChunkError: false,
     retryCount: 0,
+    exceededRetryLimit: false,
   };
 
   static getDerivedStateFromError(
@@ -79,6 +84,7 @@ class RouteErrorBoundary extends Component<
     return {
       hasError: true,
       isChunkError: isChunkLoadError(error),
+      exceededRetryLimit: false,
     };
   }
 
@@ -87,11 +93,23 @@ class RouteErrorBoundary extends Component<
   }
 
   private retry = () => {
-    this.setState((prev) => ({
-      hasError: false,
-      isChunkError: false,
-      retryCount: prev.retryCount + 1,
-    }));
+    this.setState((prev) => {
+      if (prev.retryCount >= MAX_RETRIES) {
+        return {
+          hasError: false,
+          isChunkError: false,
+          retryCount: prev.retryCount,
+          exceededRetryLimit: true,
+        };
+      }
+
+      return {
+        hasError: false,
+        isChunkError: false,
+        retryCount: prev.retryCount + 1,
+        exceededRetryLimit: false,
+      };
+    });
   };
 
   private reload = () => {
@@ -99,6 +117,24 @@ class RouteErrorBoundary extends Component<
   };
 
   render() {
+    if (this.state.exceededRetryLimit) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
+          <p className="text-sm text-muted">
+            We could not recover after multiple retry attempts. Please reload the
+            app to continue.
+          </p>
+          <button
+            type="button"
+            onClick={this.reload}
+            className="rounded-md border border-default px-3 py-1.5 text-sm"
+          >
+            Reload app
+          </button>
+        </div>
+      );
+    }
+
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
@@ -115,7 +151,7 @@ class RouteErrorBoundary extends Component<
             >
               Retry
             </button>
-            {this.state.isChunkError ? (
+            {this.state.isChunkError || this.state.retryCount >= MAX_RETRIES ? (
               <button
                 type="button"
                 onClick={this.reload}
@@ -151,13 +187,34 @@ function RouteFallback() {
 
 function LoginRoute() {
   const { auth } = useAuth();
-  if (auth.status === 'ok') {
+  const status = auth.status as string;
+  if (status === 'ok') {
     return <Navigate to={APP_PATHS.home} replace />;
   }
-  if (auth.status === 'loading') {
+  if (status === 'loading') {
     return <RouteFallback />;
   }
-  return auth.status === 'unauthenticated' ? <LoginPage /> : null;
+  if (status === 'unauthenticated') {
+    return <LoginPage />;
+  }
+  if (status === 'error') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
+        <h1 className="text-lg font-semibold">Authentication unavailable</h1>
+        <p className="text-sm text-muted">
+          We could not verify your session. Please refresh and try again.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
+      <h1 className="text-lg font-semibold">Checking authentication status</h1>
+      <p className="text-sm text-muted">
+        Please wait while we finish loading your session.
+      </p>
+    </div>
+  );
 }
 
 function NotFoundPage() {

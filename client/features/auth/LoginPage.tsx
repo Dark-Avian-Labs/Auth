@@ -9,11 +9,23 @@ import { Input } from '../../components/ui/Input';
 import { apiFetch } from '../../utils/api';
 
 function isSafeRelativePath(next: string): boolean {
+  if (next.includes('\\') || /%5c/i.test(next)) {
+    return false;
+  }
+  let decodedNext = next;
+  try {
+    decodedNext = decodeURIComponent(next);
+  } catch {
+    decodedNext = next;
+  }
+  if (decodedNext.includes('\\')) {
+    return false;
+  }
   return (
-    next.startsWith('/') &&
-    !next.startsWith('//') &&
-    !next.includes('//') &&
-    !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(next)
+    decodedNext.startsWith('/') &&
+    !decodedNext.startsWith('//') &&
+    !decodedNext.includes('//') &&
+    !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(decodedNext)
   );
 }
 
@@ -119,7 +131,11 @@ export function LoginPage() {
             autoComplete="current-password"
             placeholder="Password"
           />
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? (
+            <p className="text-sm text-red-400" role="alert" aria-atomic="true">
+              {error}
+            </p>
+          ) : null}
           <div className="pt-1">
             <Button
               type="submit"

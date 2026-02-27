@@ -53,7 +53,10 @@ export function sanitizeNextUrl(
   if (!input || input.length < 1) {
     return fallback;
   }
-  const parsed = parseUrlSafe(input);
+  const parsed =
+    input.startsWith('/') && !input.startsWith('//')
+      ? new URL(input, AUTH_PUBLIC_BASE_URL)
+      : parseUrlSafe(input);
   if (!parsed) {
     return fallback;
   }
@@ -84,7 +87,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 const deleteSessionsForUser = db.prepare(
-  "DELETE FROM sessions WHERE json_valid(sess) = 1 AND json_extract(sess, '$.user_id') = ?",
+  "DELETE FROM sessions WHERE (json_valid(sess) = 1 AND json_extract(sess, '$.user_id') = ?) OR json_valid(sess) = 0",
 );
 const deleteSessionsForUserTx = db.transaction((userId: number): number => {
   return deleteSessionsForUser.run(userId).changes;

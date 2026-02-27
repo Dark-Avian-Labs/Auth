@@ -272,9 +272,8 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
         values.push(displayName);
       }
       if (typeof req.body?.email === 'string') {
-        const rawEmail = sanitizePlainText(req.body.email, 254);
-        const email = sanitizeEmail(rawEmail);
-        if (rawEmail.length > 0 && email.length === 0) {
+        const email = sanitizeEmail(req.body.email);
+        if (req.body.email.length > 0 && email.length === 0) {
           res.status(400).json({ error: 'Invalid email format.' });
           return;
         }

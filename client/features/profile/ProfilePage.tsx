@@ -38,7 +38,7 @@ export function ProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordStatus, setPasswordStatus] = useState<{
-    type: 'ok' | 'err';
+    type: 'success' | 'error';
     message: string;
   } | null>(null);
   const [passwordSaving, setPasswordSaving] = useState(false);
@@ -120,20 +120,20 @@ export function ProfilePage() {
     const confirm = confirmPassword;
     if (!current || !next) {
       setPasswordStatus({
-        type: 'err',
+        type: 'error',
         message: 'Current password and new password are required.',
       });
       return;
     }
     if (next.length < 8) {
       setPasswordStatus({
-        type: 'err',
+        type: 'error',
         message: 'New password must be at least 8 characters.',
       });
       return;
     }
     if (next !== confirm) {
-      setPasswordStatus({ type: 'err', message: 'Passwords do not match.' });
+      setPasswordStatus({ type: 'error', message: 'Passwords do not match.' });
       return;
     }
 
@@ -154,18 +154,18 @@ export function ProfilePage() {
       } | null;
       if (!response.ok) {
         setPasswordStatus({
-          type: 'err',
+          type: 'error',
           message: body?.error || 'Failed to change password.',
         });
         return;
       }
-      setPasswordStatus({ type: 'ok', message: 'Password updated.' });
+      setPasswordStatus({ type: 'success', message: 'Password updated.' });
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch {
       setPasswordStatus({
-        type: 'err',
+        type: 'error',
         message: 'Failed to change password.',
       });
     } finally {
@@ -233,7 +233,7 @@ export function ProfilePage() {
               htmlFor="profile-role"
               className="mb-1.5 block text-sm text-muted"
             >
-              Profile
+              Role
             </label>
             <Input
               id="profile-role"
@@ -346,7 +346,7 @@ export function ProfilePage() {
         </div>
         {passwordStatus && (
           <p
-            className={`mt-3 text-sm ${passwordStatus.type === 'ok' ? 'text-success' : 'text-danger'}`}
+            className={`mt-3 text-sm ${passwordStatus.type === 'success' ? 'text-success' : 'text-danger'}`}
           >
             {passwordStatus.message}
           </p>

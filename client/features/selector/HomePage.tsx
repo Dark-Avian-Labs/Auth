@@ -5,6 +5,20 @@ import { Button } from '../../components/ui/Button';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useAuth } from '../auth/AuthContext';
 
+type CardContentProps = {
+  label: string;
+  subtitle: string;
+};
+
+function CardContent({ label, subtitle }: CardContentProps) {
+  return (
+    <>
+      <h2 className="text-lg font-semibold text-foreground">{label}</h2>
+      <p className="mt-1 text-sm text-muted">{subtitle}</p>
+    </>
+  );
+}
+
 export function HomePage() {
   const { auth, logout } = useAuth();
 
@@ -13,8 +27,25 @@ export function HomePage() {
   }
 
   const cards = auth.apps;
-  const isExternalUrl = (url: string) =>
-    /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url);
+  const cardClassName =
+    'glass-surface block rounded-xl border p-4 transition hover:border-[var(--color-accent)]';
+
+  const isExternalUrl = (url: string) => {
+    if (url.startsWith('//')) {
+      return true;
+    }
+    const schemeMatch = url.match(/^([a-z][a-z0-9+.-]*):/i);
+    if (!schemeMatch) {
+      return false;
+    }
+    const scheme = schemeMatch[1].toLowerCase();
+    return (
+      scheme === 'http' ||
+      scheme === 'https' ||
+      scheme === 'mailto' ||
+      scheme === 'tel'
+    );
+  };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -36,23 +67,17 @@ export function HomePage() {
                 href={card.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="glass-surface block rounded-xl border p-4 transition hover:border-[var(--color-accent)]"
+                className={cardClassName}
               >
-                <h2 className="text-lg font-semibold text-foreground">
-                  {card.label}
-                </h2>
-                <p className="mt-1 text-sm text-muted">{card.subtitle}</p>
+                <CardContent label={card.label} subtitle={card.subtitle} />
               </a>
             ) : (
               <Link
                 key={card.id}
                 to={card.url}
-                className="glass-surface block rounded-xl border p-4 transition hover:border-[var(--color-accent)]"
+                className={cardClassName}
               >
-                <h2 className="text-lg font-semibold text-foreground">
-                  {card.label}
-                </h2>
-                <p className="mt-1 text-sm text-muted">{card.subtitle}</p>
+                <CardContent label={card.label} subtitle={card.subtitle} />
               </Link>
             ),
           )}

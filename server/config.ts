@@ -27,10 +27,17 @@ if (NODE_ENV === 'production' && SESSION_SECRET === DEFAULT_SESSION_SECRET) {
   throw new Error('SESSION_SECRET must be set in production.');
 }
 
-export const TRUST_PROXY =
-  process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
+function parseBooleanEnv(value: string | undefined): boolean | undefined {
+  if (value == null) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'true' || normalized === '1') return true;
+  if (normalized === 'false' || normalized === '0') return false;
+  return undefined;
+}
+
+export const TRUST_PROXY = parseBooleanEnv(process.env.TRUST_PROXY) ?? false;
 export const SECURE_COOKIES =
-  process.env.SECURE_COOKIES === '1' || process.env.SECURE_COOKIES === 'true';
+  parseBooleanEnv(process.env.SECURE_COOKIES) ?? NODE_ENV === 'production';
 export const BASE_PROTOCOL =
   process.env.BASE_PROTOCOL ||
   (process.env.NODE_ENV === 'production' ? 'https' : 'http');

@@ -5,7 +5,7 @@ declare module 'express-session' {
     user_id?: number;
     username?: string;
     is_admin?: boolean;
-    login_time?: number;
     csrfToken?: string;
+    login_time?: number;
   }
 }

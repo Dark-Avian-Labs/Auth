@@ -2,9 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
-const DEFAULT_DB_PATH = path.join(DATA_DIR, 'central.db');
-export const CENTRAL_DB_PATH = process.env.CENTRAL_DB_PATH ?? DEFAULT_DB_PATH;
+import { CENTRAL_DB_PATH } from '../config.js';
 
 if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
   fs.mkdirSync(path.dirname(CENTRAL_DB_PATH), { recursive: true });
@@ -12,6 +10,29 @@ if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
 
 export const db = new Database(CENTRAL_DB_PATH);
 db.pragma('journal_mode = WAL');
+
+function normalizeUsersSchema(): void {
+  const rows = db.prepare('PRAGMA table_info(users)').all() as Array<{
+    name: string;
+  }>;
+  if (rows.length === 0) return;
+
+  const hasDisplayName = rows.some((row) => row.name === 'display_name');
+  const hasEmail = rows.some((row) => row.name === 'email');
+  const hasAvatar = rows.some((row) => row.name === 'avatar');
+
+  if (!hasDisplayName) {
+    db.exec(
+      "ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''",
+    );
+  }
+  if (!hasEmail) {
+    db.exec("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''");
+  }
+  if (!hasAvatar) {
+    db.exec('ALTER TABLE users ADD COLUMN avatar INTEGER NOT NULL DEFAULT 1');
+  }
+}
 
 function normalizeSessionsSchema(): void {
   const rows = db.prepare('PRAGMA table_info(sessions)').all() as Array<{
@@ -21,13 +42,13 @@ function normalizeSessionsSchema(): void {
 
   const hasExpire = rows.some((row) => row.name === 'expire');
   const hasExpired = rows.some((row) => row.name === 'expired');
-
   if (!hasExpire && hasExpired) {
     db.exec('ALTER TABLE sessions RENAME COLUMN expired TO expire');
   }
 }
 
 export function createSchema(): void {
+  normalizeUsersSchema();
   normalizeSessionsSchema();
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -35,6 +56,9 @@ export function createSchema(): void {
       username TEXT NOT NULL UNIQUE COLLATE NOCASE,
       password_hash TEXT NOT NULL,
       is_admin INTEGER NOT NULL DEFAULT 0,
+      display_name TEXT NOT NULL DEFAULT '',
+      email TEXT NOT NULL DEFAULT '',
+      avatar INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -84,13 +108,16 @@ export type UserRow = {
   username: string;
   password_hash: string;
   is_admin: number;
+  display_name: string;
+  email: string;
+  avatar: number;
   created_at: string;
 };
 
 export function getUserByUsername(username: string): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, created_at FROM users WHERE LOWER(username)=LOWER(?)',
+      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE LOWER(username)=LOWER(?)',
     )
     .get(username.trim()) as UserRow | undefined;
 }
@@ -98,7 +125,7 @@ export function getUserByUsername(username: string): UserRow | undefined {
 export function getUserById(userId: number): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, created_at FROM users WHERE id = ?',
+      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE id = ?',
     )
     .get(userId) as UserRow | undefined;
 }
@@ -107,7 +134,7 @@ export function getGamesForUser(userId: number): string[] {
   const rows = db
     .prepare('SELECT game_id FROM user_game_access WHERE user_id = ?')
     .all(userId) as Array<{ game_id: string }>;
-  return rows.map((r) => r.game_id);
+  return rows.map((row) => row.game_id);
 }
 
 export function hasAppAccess(userId: number, appId: string): boolean {

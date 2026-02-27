@@ -3,6 +3,8 @@ import prettier from 'eslint-config-prettier';
 import importPlugin from 'eslint-plugin-import-x';
 import n from 'eslint-plugin-n';
 import promise from 'eslint-plugin-promise';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 export default [
@@ -11,8 +13,6 @@ export default [
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
-  n.configs['flat/recommended'],
-  promise.configs['flat/recommended'],
   {
     plugins: {
       'import-x': importPlugin,
@@ -29,16 +29,6 @@ export default [
     },
 
     rules: {
-      'n/no-unpublished-import': 'off',
-      'n/no-extraneous-import': 'error',
-      'n/no-unsupported-features/node-builtins': [
-        'error',
-        {
-          version: '>=25.0.0',
-          ignores: [],
-        },
-      ],
-
       curly: ['error', 'all'],
       'max-nested-callbacks': ['error', { max: 4 }],
       'max-statements-per-line': ['error', { max: 3 }],
@@ -78,7 +68,6 @@ export default [
         },
       ],
       'no-duplicate-imports': 'error',
-      'n/no-missing-import': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         { argsIgnorePattern: '^_' },
@@ -86,8 +75,56 @@ export default [
     },
   },
   {
-    files: ['**/scripts/**/*.mjs'],
-    rules: { 'n/no-process-exit': 'off' },
+    files: ['server/**/*.{ts,tsx}', 'scripts/**/*.mjs'],
+    plugins: {
+      n,
+      promise,
+    },
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+    },
+    rules: {
+      ...n.configs['flat/recommended'].rules,
+      ...promise.configs['flat/recommended'].rules,
+      'n/no-unpublished-import': 'off',
+      'n/no-extraneous-import': 'error',
+      'n/no-process-exit': 'off',
+      'n/no-missing-import': 'off',
+      'n/no-unsupported-features/node-builtins': [
+        'error',
+        {
+          version: '>=25.0.0',
+          ignores: [],
+        },
+      ],
+    },
+  },
+  {
+    files: ['client/**/*.{ts,tsx}'],
+    plugins: {
+      react,
+      'react-hooks': reactHooks,
+    },
+    settings: {
+      react: { version: 'detect' },
+    },
+    languageOptions: {
+      globals: {
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        HTMLElement: 'readonly',
+        MouseEvent: 'readonly',
+        KeyboardEvent: 'readonly',
+        fetch: 'readonly',
+        Headers: 'readonly',
+      },
+    },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
   },
   prettier,
 ];

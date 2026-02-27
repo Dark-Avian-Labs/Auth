@@ -97,7 +97,12 @@ export function Layout() {
             >
               {APP_DISPLAY_NAME}
             </span>
-            <span className="brand-lockup__title_2"> {APP_DISPLAY_NAME_2}</span>
+            <span
+              className={`brand-lockup__title brand-lockup__title_small brand-lockup--fx ${mode === 'light' ? 'brand-lockup--light' : ''}`}
+            >
+              {' '}
+              {APP_DISPLAY_NAME_2}
+            </span>
           </Link>
 
           <div className="justify-self-center">

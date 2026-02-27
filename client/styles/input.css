@@ -112,7 +112,7 @@ html.theme-light {
       0.05em 0 0.015em rgba(var(--color-on-dark), 0.5);
   }
 
-  .brand-lockup__title_2 {
+  .brand-lockup__title.brand-lockup__title_small {
     font-weight: 200;
   }
 

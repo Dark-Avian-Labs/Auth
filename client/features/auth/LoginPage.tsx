@@ -12,7 +12,7 @@ function isSafeRelativePath(next: string): boolean {
   if (next.includes('\\') || /%5c/i.test(next)) {
     return false;
   }
-  let decodedNext = next;
+  let decodedNext: string;
   try {
     decodedNext = decodeURIComponent(next);
   } catch {

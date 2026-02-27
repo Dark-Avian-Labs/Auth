@@ -14,6 +14,7 @@ import { APP_PATHS } from '../../app/paths';
 import { Menu } from '../../components/ui/Menu';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
+import { getProfileIconSrc } from '../../utils/profileIcons';
 
 export function Layout() {
   const { mode, toggleMode } = useTheme();
@@ -78,6 +79,7 @@ export function Layout() {
   const isLoggedIn = auth.status === 'ok' && auth.user !== null;
   const isAdmin = auth.user?.is_admin === true;
   const avatarId = Number(auth.user?.avatar ?? 1);
+  const avatarSrc = getProfileIconSrc(avatarId);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -124,17 +126,23 @@ export function Layout() {
               <button
                 ref={triggerRef}
                 type="button"
-                className="icon-toggle-btn"
+                className="icon-toggle-btn profile-avatar-btn"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label="Open user menu"
                 onClick={() => setMenuOpen((prev) => !prev)}
               >
-                <span aria-hidden="true" className="text-xs font-semibold">
-                  {isLoggedIn
-                    ? `#${Number.isInteger(avatarId) ? avatarId : 1}`
-                    : '🔐'}
-                </span>
+                {isLoggedIn ? (
+                  <img
+                    src={avatarSrc}
+                    alt=""
+                    className="profile-avatar-image"
+                  />
+                ) : (
+                  <span aria-hidden="true" className="text-xs font-semibold">
+                    🔐
+                  </span>
+                )}
               </button>
               {menuOpen && (
                 <Menu>

@@ -6,6 +6,7 @@ import bgArt from '../../../background.txt?raw';
 import feathers from '../../../feathers.png';
 import {
   APP_DISPLAY_NAME,
+  APP_DISPLAY_NAME_2,
   LEGAL_ENTITY_NAME,
   LEGAL_PAGE_URL,
 } from '../../app/config';
@@ -96,6 +97,7 @@ export function Layout() {
             >
               {APP_DISPLAY_NAME}
             </span>
+            <span className="brand-lockup__title_2"> {APP_DISPLAY_NAME_2}</span>
           </Link>
 
           <div className="justify-self-center">

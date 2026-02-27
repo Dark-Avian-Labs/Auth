@@ -1,7 +1,6 @@
 import { Navigate, Link } from 'react-router-dom';
 
 import { APP_PATHS } from '../../app/paths';
-import { Button } from '../../components/ui/Button';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { useAuth } from '../auth/AuthContext';
 
@@ -20,7 +19,7 @@ function CardContent({ label, subtitle }: CardContentProps) {
 }
 
 export function HomePage() {
-  const { auth, logout } = useAuth();
+  const { auth } = useAuth();
 
   if (auth.status !== 'ok' || !auth.user) {
     return <Navigate to={APP_PATHS.login} replace />;
@@ -85,21 +84,6 @@ export function HomePage() {
           </p>
         </GlassCard>
       )}
-
-      <div className="flex gap-2">
-        {auth.user.is_admin ? (
-          <Button asChild variant="secondary">
-            <Link to={APP_PATHS.admin}>Open Admin</Link>
-          </Button>
-        ) : null}
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => logout(APP_PATHS.login)}
-        >
-          Logout
-        </Button>
-      </div>
     </div>
   );
 }

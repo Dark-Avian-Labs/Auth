@@ -18,7 +18,12 @@ function readCsvEnv(value: string | undefined): string[] {
 
 export const APP_DISPLAY_NAME = readTrimmedEnv(
   import.meta.env.VITE_APP_NAME as string | undefined,
-  'Dark Avian LABS',
+  'Dark Avian',
+);
+
+export const APP_DISPLAY_NAME_2 = readTrimmedEnv(
+  import.meta.env.VITE_APP_NAME_2 as string | undefined,
+  'LABS',
 );
 
 export const LEGAL_ENTITY_NAME = readTrimmedEnv(

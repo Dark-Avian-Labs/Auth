@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/inter';
 
 @source "../../client/**/*.{ts,tsx,js,jsx,html}";
 @source "../../index.html";
@@ -58,6 +59,7 @@ html.theme-light {
         var(--color-bg-end) 100%
       );
     font-family:
+      'Inter Variable',
       Inter,
       system-ui,
       -apple-system,
@@ -108,6 +110,10 @@ html.theme-light {
     text-shadow:
       -0.05em 0 0.015em rgba(var(--color-on-dark), 0.5),
       0.05em 0 0.015em rgba(var(--color-on-dark), 0.5);
+  }
+
+  .brand-lockup__title_2 {
+    font-weight: 200;
   }
 
   .brand-lockup__title.brand-lockup--light {
@@ -257,28 +263,37 @@ html.theme-light {
 
   .profile-icon-grid {
     display: grid;
-    grid-template-columns: repeat(8, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
     gap: 10px;
   }
 
   .profile-icon-option {
-    height: 48px;
+    width: 100%;
+    aspect-ratio: 1 / 1;
     border-radius: 12px;
+    padding: 4px;
     border: 1px solid var(--color-glass-border);
     background: var(--color-glass);
-    color: var(--color-muted);
     cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .profile-icon-option:hover {
+    border-color: var(--color-glass-border-hover);
+    background: var(--color-glass-hover);
   }
 
   .profile-icon-option--selected {
     border-color: var(--color-accent);
-    color: var(--color-accent);
     background: color-mix(in srgb, var(--color-accent) 10%, transparent);
   }
 
-  .profile-icon-option__label {
-    font-size: 12px;
-    font-weight: 600;
+  .profile-icon-option__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center bottom;
+    border-radius: 999px;
   }
 
   .modal-overlay {

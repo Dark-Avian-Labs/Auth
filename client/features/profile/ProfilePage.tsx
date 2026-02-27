@@ -7,19 +7,11 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { apiFetch } from '../../utils/api';
+import {
+  getProfileIconSrc,
+  PROFILE_AVATAR_IDS,
+} from '../../utils/profileIcons';
 import { useAuth } from '../auth/AuthContext';
-
-const PROFILE_AVATAR_IDS = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-];
-
-function normalizeAvatarId(value: unknown): number {
-  const avatar = Number(value);
-  if (Number.isInteger(avatar) && avatar >= 1 && avatar <= 16) {
-    return avatar;
-  }
-  return 1;
-}
 
 export function ProfilePage() {
   const location = useLocation();
@@ -75,7 +67,12 @@ export function ProfilePage() {
     if (!profile) return;
     setDisplayName(profile.display_name ?? '');
     setEmail(profile.email ?? '');
-    setAvatar(normalizeAvatarId(profile.avatar));
+    const avatarId = Number(profile.avatar);
+    setAvatar(
+      Number.isInteger(avatarId) && avatarId >= 1 && avatarId <= 16
+        ? avatarId
+        : 1,
+    );
   }, [profile]);
 
   if (!profile) {
@@ -205,7 +202,11 @@ export function ProfilePage() {
               }}
               aria-label={`Select profile icon ${id}`}
             >
-              <span className="profile-icon-option__label">#{id}</span>
+              <img
+                src={getProfileIconSrc(id)}
+                alt=""
+                className="profile-icon-option__image"
+              />
             </button>
           ))}
         </div>

@@ -21,7 +21,6 @@ import {
   listPermissions,
 } from '../db/authDb.js';
 
-// Precomputed argon2id hash used to normalize login timing for missing users.
 const DUMMY_PASSWORD_HASH =
   '$argon2id$v=19$m=19456,t=2,p=1$ij1afITi8QY7bDULiIMLZg$vGOfu4wqLHlmP0hSSRtrN00pburetS53UJEaW9ybWGA';
 

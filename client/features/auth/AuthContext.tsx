@@ -85,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch {
-      // Ignore network errors and continue with local redirect.
+      // ignore
     } finally {
       clearCsrfToken();
       window.location.href = redirect;

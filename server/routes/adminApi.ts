@@ -1,4 +1,9 @@
-import { Router, type Request, type Response } from 'express';
+import {
+  Router,
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
 import { rateLimit } from 'express-rate-limit';
 
 import {
@@ -10,14 +15,22 @@ import {
 import {
   appendAuditLog,
   db,
-  getGamesForUser,
-  getUserByUsername,
-  listPermissions,
+  getGamesForUsers,
+  getUserById,
+  listPermissionsForUsers,
   replacePermissions,
   setAppAccess,
 } from '../db/authDb.js';
 
 export const adminApiRouter = Router();
+const ALLOWED_PERMISSIONS = new Set<string>([
+  'read',
+  'write',
+  'create',
+  'update',
+  'delete',
+  'admin',
+]);
 
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -40,6 +53,19 @@ function sanitizeUsername(raw: string): string {
   return normalized;
 }
 
+function isSqliteConstraintError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const code =
+    'code' in error && typeof error.code === 'string' ? error.code : '';
+  const message =
+    'message' in error && typeof error.message === 'string'
+      ? error.message
+      : '';
+  return code === 'SQLITE_CONSTRAINT' || message.includes('SQLITE_CONSTRAINT');
+}
+
 adminApiRouter.get('/users', (_req: Request, res: Response) => {
   const users = db
     .prepare(
@@ -51,51 +77,70 @@ adminApiRouter.get('/users', (_req: Request, res: Response) => {
     is_admin: number;
     created_at: string;
   }>;
+  const userIds = users.map((user) => user.id);
+  const gamesByUserId = getGamesForUsers(userIds);
+  const permissionsByUserId = listPermissionsForUsers(userIds);
   const payload = users.map((user) => ({
     ...user,
     is_admin: Boolean(user.is_admin),
-    app_access: getGamesForUser(user.id),
-    permissions: listPermissions(user.id),
+    app_access: gamesByUserId[user.id] ?? [],
+    permissions: permissionsByUserId[user.id] ?? [],
   }));
   res.json({ users: payload });
 });
 
-adminApiRouter.post('/users', async (req: Request, res: Response) => {
-  const username = sanitizeUsername(String(req.body?.username ?? ''));
-  const password = String(req.body?.password ?? '');
-  const isAdmin = Boolean(req.body?.is_admin);
-  if (!username || !password) {
-    res.status(400).json({
-      error: 'username and password are required (username: a-z, 0-9, . _ -)',
-    });
-    return;
-  }
-  if (password.length < 8) {
-    res.status(400).json({ error: 'Password must be at least 8 characters.' });
-    return;
-  }
-  if (getUserByUsername(username)) {
-    res.status(400).json({ error: 'Username already exists' });
-    return;
-  }
+adminApiRouter.post(
+  '/users',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const username = sanitizeUsername(String(req.body?.username ?? ''));
+      const password = String(req.body?.password ?? '');
+      const isAdmin = Boolean(req.body?.is_admin);
+      if (!username || !password) {
+        res.status(400).json({
+          error:
+            'username and password are required (username: a-z, 0-9, . _ -)',
+        });
+        return;
+      }
+      if (password.length < 8) {
+        res
+          .status(400)
+          .json({ error: 'Password must be at least 8 characters.' });
+        return;
+      }
 
-  const hash = await hashPassword(password);
-  const result = db
-    .prepare(
-      'INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
-    )
-    .run(username, hash, isAdmin ? 1 : 0);
-  const createdUserId = Number(result.lastInsertRowid);
-  appendAuditLog({
-    actorUserId: req.session.user_id!,
-    eventType: 'admin.user.create',
-    targetType: 'user',
-    targetId: String(createdUserId),
-    detailsJson: JSON.stringify({ username, isAdmin }),
-    ip: requestIp(req),
-  });
-  res.json({ success: true, user_id: createdUserId });
-});
+      const hash = await hashPassword(password);
+      let createdUserId = 0;
+      try {
+        const result = db
+          .prepare(
+            'INSERT INTO users (username, password_hash, is_admin) VALUES (?, ?, ?)',
+          )
+          .run(username, hash, isAdmin ? 1 : 0);
+        createdUserId = Number(result.lastInsertRowid);
+      } catch (error) {
+        if (isSqliteConstraintError(error)) {
+          res.status(400).json({ error: 'Username already exists' });
+          return;
+        }
+        throw error;
+      }
+
+      appendAuditLog({
+        actorUserId: req.session.user_id!,
+        eventType: 'admin.user.create',
+        targetType: 'user',
+        targetId: String(createdUserId),
+        detailsJson: JSON.stringify({ username, isAdmin }),
+        ip: requestIp(req),
+      });
+      res.json({ success: true, user_id: createdUserId });
+    } catch (error) {
+      next(error);
+    }
+  },
+);
 
 adminApiRouter.patch('/users/:id', async (req: Request, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
@@ -106,18 +151,31 @@ adminApiRouter.patch('/users/:id', async (req: Request, res: Response) => {
 
   const updates: string[] = [];
   const values: Array<string | number> = [];
+  const changes: Record<string, string | boolean> = {};
+  let passwordUpdated = false;
   if (typeof req.body?.username === 'string' && req.body.username.trim()) {
     const username = sanitizeUsername(req.body.username);
     if (!username) {
       res.status(400).json({ error: 'Invalid username format.' });
       return;
     }
+    const existing = db
+      .prepare(
+        'SELECT id FROM users WHERE LOWER(username) = LOWER(?) AND id != ?',
+      )
+      .get(username, userId) as { id: number } | undefined;
+    if (existing) {
+      res.status(409).json({ error: 'Username already exists' });
+      return;
+    }
     updates.push('username = ?');
     values.push(username);
+    changes.username = username;
   }
   if (typeof req.body?.is_admin === 'boolean') {
     updates.push('is_admin = ?');
     values.push(req.body.is_admin ? 1 : 0);
+    changes.is_admin = req.body.is_admin;
   }
   if (typeof req.body?.password === 'string' && req.body.password.length > 0) {
     if (req.body.password.length < 8) {
@@ -128,6 +186,8 @@ adminApiRouter.patch('/users/:id', async (req: Request, res: Response) => {
     }
     updates.push('password_hash = ?');
     values.push(await hashPassword(req.body.password));
+    passwordUpdated = true;
+    changes.password_hash = '[updated]';
   }
   if (updates.length === 0) {
     res.status(400).json({ error: 'No updates provided' });
@@ -142,7 +202,7 @@ adminApiRouter.patch('/users/:id', async (req: Request, res: Response) => {
     res.status(404).json({ error: 'User not found' });
     return;
   }
-  if (typeof req.body?.is_admin === 'boolean') {
+  if (typeof req.body?.is_admin === 'boolean' || passwordUpdated) {
     revokeSessionsForUser(userId);
   }
   appendAuditLog({
@@ -150,7 +210,7 @@ adminApiRouter.patch('/users/:id', async (req: Request, res: Response) => {
     eventType: 'admin.user.update',
     targetType: 'user',
     targetId: String(userId),
-    detailsJson: JSON.stringify({ updates }),
+    detailsJson: JSON.stringify({ changes }),
     ip: requestIp(req),
   });
   res.json({ success: true });
@@ -189,6 +249,11 @@ adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {
     res.status(400).json({ error: 'Invalid user id or app id' });
     return;
   }
+  const user = getUserById(userId);
+  if (!user) {
+    res.status(404).json({ error: 'User not found' });
+    return;
+  }
   const enabled = Boolean(req.body?.enabled);
   setAppAccess(userId, appId, enabled);
   appendAuditLog({
@@ -205,23 +270,53 @@ adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {
 adminApiRouter.put('/users/:id/permissions', (req: Request, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
   const appId = String(req.body?.app_id ?? '').trim();
-  const permissions = Array.isArray(req.body?.permissions)
-    ? req.body.permissions.filter(
-        (value: unknown): value is string => typeof value === 'string',
-      )
+  const rawPermissions: unknown[] = Array.isArray(req.body?.permissions)
+    ? req.body.permissions
     : [];
 
   if (!Number.isInteger(userId) || userId <= 0 || !appId) {
     res.status(400).json({ error: 'Invalid user id or app_id' });
     return;
   }
-  replacePermissions(userId, appId, permissions);
+
+  const hasInvalidType = rawPermissions.some(
+    (value) => typeof value !== 'string',
+  );
+  if (hasInvalidType) {
+    res.status(400).json({ error: 'permissions must be an array of strings' });
+    return;
+  }
+  const normalizedPermissions = (rawPermissions as string[]).map((value) =>
+    value.trim().toLowerCase(),
+  );
+
+  const unknownPermissions = normalizedPermissions.filter(
+    (permission) =>
+      permission.length > 0 && !ALLOWED_PERMISSIONS.has(permission),
+  );
+  if (unknownPermissions.length > 0) {
+    res.status(400).json({
+      error: `Unknown permissions: ${Array.from(new Set(unknownPermissions)).join(', ')}`,
+    });
+    return;
+  }
+
+  const validatedPermissions: string[] = Array.from(
+    new Set(
+      normalizedPermissions.filter(
+        (permission) =>
+          permission.length > 0 && ALLOWED_PERMISSIONS.has(permission),
+      ),
+    ),
+  );
+
+  replacePermissions(userId, appId, validatedPermissions);
   appendAuditLog({
     actorUserId: req.session.user_id!,
     eventType: 'admin.user.permissions.update',
     targetType: 'user',
     targetId: String(userId),
-    detailsJson: JSON.stringify({ appId, permissions }),
+    detailsJson: JSON.stringify({ appId, permissions: validatedPermissions }),
     ip: requestIp(req),
   });
   res.json({ success: true });

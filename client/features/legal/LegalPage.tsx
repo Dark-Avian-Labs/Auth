@@ -11,8 +11,24 @@ export function LegalPage() {
           <p>Lutz Schwemer Panchez</p>
           <p>Holsteiner Str. 1</p>
           <p>21465 Reinbek</p>
-          <p>Phone: +49 176 72439032</p>
-          <p>E-Mail: shark@shark5060.net</p>
+          <p>
+            Phone:{' '}
+            <a
+              className="text-foreground underline underline-offset-2"
+              href="tel:+4917672439032"
+            >
+              +49 176 72439032
+            </a>
+          </p>
+          <p>
+            E-Mail:{' '}
+            <a
+              className="text-foreground underline underline-offset-2"
+              href="mailto:shark@shark5060.net"
+            >
+              shark@shark5060.net
+            </a>
+          </p>
         </section>
 
         <section className="mt-8 space-y-3 text-sm text-muted">
@@ -90,8 +106,24 @@ export function LegalPage() {
             Responsible Person
           </h3>
           <p>Lutz Schwemer Panchez, Holsteiner Str. 1, 21465 Reinbek</p>
-          <p>Phone: +49 176 72439032</p>
-          <p>E-Mail: shark@shark5060.net</p>
+          <p>
+            Phone:{' '}
+            <a
+              className="text-foreground underline underline-offset-2"
+              href="tel:+4917672439032"
+            >
+              +49 176 72439032
+            </a>
+          </p>
+          <p>
+            E-Mail:{' '}
+            <a
+              className="text-foreground underline underline-offset-2"
+              href="mailto:shark@shark5060.net"
+            >
+              shark@shark5060.net
+            </a>
+          </p>
 
           <h3 className="pt-2 text-base font-semibold text-foreground">
             Types of Data Processed
@@ -192,6 +224,7 @@ export function LegalPage() {
             <a
               className="text-foreground underline underline-offset-2"
               href="https://www.netcup.de/"
+              aria-label="https://www.netcup.de/ (opens in a new tab)"
               target="_blank"
               rel="noreferrer"
             >
@@ -203,6 +236,7 @@ export function LegalPage() {
             <a
               className="text-foreground underline underline-offset-2"
               href="https://www.netcup.de/kontakt/datenschutzerklaerung.php"
+              aria-label="https://www.netcup.de/kontakt/datenschutzerklaerung.php (opens in a new tab)"
               target="_blank"
               rel="noreferrer"
             >
@@ -214,6 +248,7 @@ export function LegalPage() {
             <a
               className="text-foreground underline underline-offset-2"
               href="https://helpcenter.netcup.com/de/wiki/general/avv/"
+              aria-label="https://helpcenter.netcup.com/de/wiki/general/avv/ (opens in a new tab)"
               target="_blank"
               rel="noreferrer"
             >
@@ -233,7 +268,7 @@ export function LegalPage() {
             Copyright for Third-Party Content
           </h3>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Header font "Inter" - The Inter Project Authors</li>
+            <li>Header font &quot;Inter&quot; - The Inter Project Authors</li>
             <li>Profile Icons - Vecteezy.com</li>
             <li>General legal text - Kanzlei Hasselbach</li>
             <li>GDPR text - Dr. Thomas Schwenke</li>

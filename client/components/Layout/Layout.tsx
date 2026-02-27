@@ -18,11 +18,21 @@ export function Layout() {
   const { mode, toggleMode } = useTheme();
   const { auth, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const firstMenuItemRef = useRef<HTMLElement | null>(null);
+  const prevMenuOpenRef = useRef(menuOpen);
   const currentYear = new Date().getFullYear();
 
   const handleLogout = useCallback(async () => {
-    await logout(APP_PATHS.login);
+    setLogoutError(null);
+    try {
+      await logout(APP_PATHS.login);
+    } catch (error) {
+      console.error('Logout failed:', error);
+      setLogoutError('Logout failed. Please try again.');
+    }
   }, [logout]);
 
   useEffect(() => {
@@ -34,15 +44,33 @@ export function Layout() {
         setMenuOpen(false);
       }
     };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+    };
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (menuOpen) {
+      firstMenuItemRef.current?.focus();
+    } else if (prevMenuOpenRef.current) {
+      triggerRef.current?.focus();
+    }
+    prevMenuOpenRef.current = menuOpen;
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      return undefined;
+    }
     const onEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         setMenuOpen(false);
+        triggerRef.current?.focus();
       }
     };
-    document.addEventListener('mousedown', onMouseDown);
     document.addEventListener('keydown', onEscape);
     return () => {
-      document.removeEventListener('mousedown', onMouseDown);
       document.removeEventListener('keydown', onEscape);
     };
   }, [menuOpen]);
@@ -88,6 +116,7 @@ export function Layout() {
 
             <div ref={menuRef} className="relative">
               <button
+                ref={triggerRef}
                 type="button"
                 className="icon-toggle-btn"
                 aria-haspopup="menu"
@@ -105,6 +134,9 @@ export function Layout() {
                 <Menu>
                   {!isLoggedIn ? (
                     <Link
+                      ref={(node) => {
+                        firstMenuItemRef.current = node;
+                      }}
                       to={APP_PATHS.login}
                       className="user-menu-item"
                       role="menuitem"
@@ -116,6 +148,9 @@ export function Layout() {
                     <>
                       {isAdmin && (
                         <Link
+                          ref={(node) => {
+                            firstMenuItemRef.current = node;
+                          }}
                           to={APP_PATHS.admin}
                           className="user-menu-item"
                           role="menuitem"
@@ -125,6 +160,13 @@ export function Layout() {
                         </Link>
                       )}
                       <Link
+                        ref={
+                          isAdmin
+                            ? undefined
+                            : (node) => {
+                                firstMenuItemRef.current = node;
+                              }
+                        }
                         to={APP_PATHS.profile}
                         className="user-menu-item"
                         role="menuitem"
@@ -150,6 +192,11 @@ export function Layout() {
             </div>
           </div>
         </div>
+        {logoutError ? (
+          <p className="mt-1 text-right text-sm text-red-400" role="alert">
+            {logoutError}
+          </p>
+        ) : null}
       </header>
 
       <main className="relative z-0 flex-1 px-6 pb-6">

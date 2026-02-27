@@ -28,7 +28,11 @@ export function ProfilePage() {
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [avatar, setAvatar] = useState(1);
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [saveStatus, setSaveStatus] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
+  const [saving, setSaving] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -85,14 +89,29 @@ export function ProfilePage() {
   }
 
   const handleSave = async () => {
-    const result = await updateProfile({
-      display_name: displayName.trim(),
-      email: email.trim(),
-      avatar,
-    });
-    setSaveStatus(
-      result.ok ? 'Profile saved.' : result.error || 'Save failed.',
-    );
+    if (saving) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const result = await updateProfile({
+        display_name: displayName.trim(),
+        email: email.trim(),
+        avatar,
+      });
+      setSaveStatus({
+        type: result.ok ? 'success' : 'error',
+        message: result.ok ? 'Profile saved.' : result.error || 'Save failed.',
+      });
+    } catch {
+      setSaveStatus({
+        type: 'error',
+        message: 'Save failed.',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -122,6 +141,9 @@ export function ProfilePage() {
     try {
       const response = await apiFetch('/api/auth/change-password', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           current_password: current,
           new_password: next,
@@ -192,8 +214,14 @@ export function ProfilePage() {
       <GlassCard className="p-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1.5 block text-sm text-muted">Username</label>
+            <label
+              htmlFor="profile-username"
+              className="mb-1.5 block text-sm text-muted"
+            >
+              Username
+            </label>
             <Input
+              id="profile-username"
               type="text"
               readOnlyStyle
               value={profile.username}
@@ -201,8 +229,14 @@ export function ProfilePage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm text-muted">Profile</label>
+            <label
+              htmlFor="profile-role"
+              className="mb-1.5 block text-sm text-muted"
+            >
+              Profile
+            </label>
             <Input
+              id="profile-role"
               type="text"
               readOnlyStyle
               value={profile.is_admin ? 'Admin' : 'User'}
@@ -210,8 +244,14 @@ export function ProfilePage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm text-muted">Name</label>
+            <label
+              htmlFor="profile-name"
+              className="mb-1.5 block text-sm text-muted"
+            >
+              Name
+            </label>
             <Input
+              id="profile-name"
               type="text"
               value={displayName}
               onChange={(e) => {
@@ -222,8 +262,14 @@ export function ProfilePage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm text-muted">Email</label>
+            <label
+              htmlFor="profile-email"
+              className="mb-1.5 block text-sm text-muted"
+            >
+              Email
+            </label>
             <Input
+              id="profile-email"
               type="email"
               value={email}
               onChange={(e) => {
@@ -246,12 +292,21 @@ export function ProfilePage() {
           >
             Change Password
           </Button>
-          <Button type="button" variant="accent" onClick={handleSave}>
-            Save
+          <Button
+            type="button"
+            variant="accent"
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : 'Save'}
           </Button>
         </div>
         {saveStatus && (
-          <p className="mt-3 text-sm text-success">{saveStatus}</p>
+          <p
+            className={`mt-3 text-sm ${saveStatus.type === 'success' ? 'text-success' : 'text-danger'}`}
+          >
+            {saveStatus.message}
+          </p>
         )}
       </GlassCard>
 
@@ -271,18 +326,21 @@ export function ProfilePage() {
             type="password"
             placeholder="Current password"
             value={currentPassword}
+            autoComplete="current-password"
             onChange={(e) => setCurrentPassword(e.target.value)}
           />
           <Input
             type="password"
             placeholder="New password"
             value={newPassword}
+            autoComplete="new-password"
             onChange={(e) => setNewPassword(e.target.value)}
           />
           <Input
             type="password"
             placeholder="Confirm new password"
             value={confirmPassword}
+            autoComplete="new-password"
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
         </div>

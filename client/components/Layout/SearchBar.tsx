@@ -1,15 +1,27 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 
 import { SEARCH_PLACEHOLDER } from '../../app/config';
 
-export function SearchBar() {
+interface SearchBarProps {
+  onSearch?: (query: string) => void;
+}
+
+export function SearchBar({ onSearch }: SearchBarProps) {
   const [query, setQuery] = useState('');
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!onSearch) {
+      return;
+    }
+    onSearch(query);
+  };
 
   return (
-    <div className="search-wrapper relative">
+    <form className="search-wrapper relative" onSubmit={handleSubmit}>
       <input
         type="text"
         className="search-box w-52"
+        aria-label="Search"
         placeholder={SEARCH_PLACEHOLDER}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -24,6 +36,6 @@ export function SearchBar() {
           &times;
         </button>
       )}
-    </div>
+    </form>
   );
 }

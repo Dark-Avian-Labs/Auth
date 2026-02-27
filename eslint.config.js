@@ -70,7 +70,7 @@ export default [
       'no-duplicate-imports': 'error',
       '@typescript-eslint/no-unused-vars': [
         'error',
-        { argsIgnorePattern: '^_' },
+        { argsIgnorePattern: '^_', ignoreRestSiblings: true },
       ],
     },
   },
@@ -122,6 +122,8 @@ export default [
       },
     },
     rules: {
+      ...react.configs.flat.recommended.rules,
+      'react/react-in-jsx-scope': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     },

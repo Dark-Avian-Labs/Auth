@@ -83,24 +83,15 @@ export async function hashPassword(password: string): Promise<string> {
   });
 }
 
+const deleteSessionsForUser = db.prepare(
+  "DELETE FROM sessions WHERE json_valid(sess) = 1 AND json_extract(sess, '$.user_id') = ?",
+);
+const deleteSessionsForUserTx = db.transaction((userId: number): number => {
+  return deleteSessionsForUser.run(userId).changes;
+});
+
 export function revokeSessionsForUser(userId: number): number {
-  const sessions = db.prepare('SELECT sid, sess FROM sessions').all() as Array<{
-    sid: string;
-    sess: string;
-  }>;
-  const deleteSession = db.prepare('DELETE FROM sessions WHERE sid = ?');
-  let revoked = 0;
-  for (const row of sessions) {
-    try {
-      const payload = JSON.parse(row.sess) as { user_id?: unknown };
-      if (payload.user_id === userId) {
-        revoked += deleteSession.run(row.sid).changes;
-      }
-    } catch {
-      // ignore malformed session rows
-    }
-  }
-  return revoked;
+  return deleteSessionsForUserTx(userId);
 }
 
 export function clearAuthCookies(res: express.Response): void {

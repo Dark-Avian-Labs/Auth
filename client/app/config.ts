@@ -44,3 +44,7 @@ export const AUTH_ADMIN_URL = readTrimmedEnv(
 export const ALLOWED_NEXT_ORIGINS = readCsvEnv(
   import.meta.env.VITE_ALLOWED_NEXT_ORIGINS as string | undefined,
 );
+
+export const AVAILABLE_APPS = readCsvEnv(
+  import.meta.env.VITE_AVAILABLE_APPS as string | undefined,
+);

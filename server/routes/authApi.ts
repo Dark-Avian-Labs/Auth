@@ -21,6 +21,10 @@ import {
   listPermissions,
 } from '../db/authDb.js';
 
+// Precomputed argon2id hash used to normalize login timing for missing users.
+const DUMMY_PASSWORD_HASH =
+  '$argon2id$v=19$m=19456,t=2,p=1$ij1afITi8QY7bDULiIMLZg$vGOfu4wqLHlmP0hSSRtrN00pburetS53UJEaW9ybWGA';
+
 export function createAuthApiRouter(csrfToken: (req: Request) => string) {
   const authRouter = Router();
 
@@ -106,6 +110,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
 
       const user = getUserByUsername(username);
       if (!user) {
+        await verifyPassword(password, DUMMY_PASSWORD_HASH);
         appendAuditLog({
           actorUserId: null,
           eventType: 'auth.login.failed',
@@ -268,7 +273,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
       }
       if (typeof req.body?.email === 'string') {
         const rawEmail = sanitizePlainText(req.body.email, 254);
-        const email = sanitizeEmail(req.body.email);
+        const email = sanitizeEmail(rawEmail);
         if (rawEmail.length > 0 && email.length === 0) {
           res.status(400).json({ error: 'Invalid email format.' });
           return;
@@ -335,10 +340,10 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
           .json({ error: 'current_password and new_password are required.' });
         return;
       }
-      if (newPassword.length < 8) {
+      if (newPassword.length < 8 || newPassword.length > 128) {
         res
           .status(400)
-          .json({ error: 'Password must be at least 8 characters.' });
+          .json({ error: 'Password must be between 8 and 128 characters.' });
         return;
       }
 
@@ -378,19 +383,24 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
     },
   );
 
-  authRouter.post('/logout-all', requireAuth, (req: Request, res: Response) => {
-    const userId = req.session.user_id!;
-    revokeSessionsForUser(userId);
-    appendAuditLog({
-      actorUserId: userId,
-      eventType: 'auth.logout_all',
-      targetType: 'user',
-      targetId: String(userId),
-      ip: requestIp(req),
-    });
-    clearAuthCookies(res);
-    res.json({ success: true });
-  });
+  authRouter.post(
+    '/logout-all',
+    passwordLimiter,
+    requireAuth,
+    (req: Request, res: Response) => {
+      const userId = req.session.user_id!;
+      revokeSessionsForUser(userId);
+      appendAuditLog({
+        actorUserId: userId,
+        eventType: 'auth.logout_all',
+        targetType: 'user',
+        targetId: String(userId),
+        ip: requestIp(req),
+      });
+      clearAuthCookies(res);
+      res.json({ success: true });
+    },
+  );
 
   return authRouter;
 }

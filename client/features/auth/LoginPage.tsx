@@ -8,13 +8,27 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { apiFetch } from '../../utils/api';
 
+function isSafeRelativePath(next: string): boolean {
+  return (
+    next.startsWith('/') &&
+    !next.startsWith('//') &&
+    !next.includes('//') &&
+    !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(next)
+  );
+}
+
+function isAbsoluteHttpUrl(next: string): boolean {
+  return /^https?:\/\//i.test(next);
+}
+
 function readNextFromLocation(search: string): string {
   const params = new URLSearchParams(search);
-  const next = params.get('next');
-  if (!next) {
+  const rawNext = params.get('next');
+  if (!rawNext) {
     return APP_PATHS.home;
   }
-  return next;
+  const next = rawNext.trim();
+  return isSafeRelativePath(next) ? next : APP_PATHS.home;
 }
 
 export function LoginPage() {
@@ -41,6 +55,9 @@ export function LoginPage() {
     try {
       const response = await apiFetch('/api/auth/login', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({ username: username.trim(), password, next }),
       });
       const body = (await response.json().catch(() => null)) as {
@@ -52,9 +69,15 @@ export function LoginPage() {
         return;
       }
       await refresh();
-      if (typeof body?.next === 'string' && body.next.startsWith('http')) {
-        window.location.href = body.next;
-        return;
+      if (typeof body?.next === 'string') {
+        if (isAbsoluteHttpUrl(body.next)) {
+          window.location.href = body.next;
+          return;
+        }
+        if (isSafeRelativePath(body.next)) {
+          navigate(body.next);
+          return;
+        }
       }
       navigate(APP_PATHS.home);
     } catch {
@@ -73,32 +96,41 @@ export function LoginPage() {
         <p className="mb-4 text-center text-sm text-muted">
           Unified access for Parametric and Corpus.
         </p>
-        <div className="space-y-3">
+        <form
+          className="space-y-3"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handleSubmit();
+          }}
+        >
           <Input
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
+            aria-label="Username"
+            autoComplete="username"
             placeholder="Username"
           />
           <Input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            aria-label="Password"
+            autoComplete="current-password"
             placeholder="Password"
           />
-        </div>
-        {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
-        <div className="mt-4">
-          <Button
-            type="button"
-            variant="accent"
-            className="w-full"
-            disabled={saving}
-            onClick={handleSubmit}
-          >
-            {saving ? 'Signing in...' : 'Login'}
-          </Button>
-        </div>
+          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          <div className="pt-1">
+            <Button
+              type="submit"
+              variant="accent"
+              className="w-full"
+              disabled={saving}
+            >
+              {saving ? 'Signing in...' : 'Login'}
+            </Button>
+          </div>
+        </form>
       </GlassCard>
     </div>
   );

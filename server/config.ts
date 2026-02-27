@@ -31,20 +31,32 @@ export const TRUST_PROXY =
   process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
 export const SECURE_COOKIES =
   process.env.SECURE_COOKIES === '1' || process.env.SECURE_COOKIES === 'true';
-export const BASE_PROTOCOL = 'https';
+export const BASE_PROTOCOL =
+  process.env.BASE_PROTOCOL ||
+  (process.env.NODE_ENV === 'production' ? 'https' : 'http');
 
 export const BASE_DOMAIN = process.env.BASE_DOMAIN?.trim().toLowerCase() || '';
 if (!BASE_DOMAIN) {
   throw new Error('BASE_DOMAIN must be set.');
 }
-if (!/^[a-z0-9.-]+$/.test(BASE_DOMAIN)) {
-  throw new Error('BASE_DOMAIN must contain only [a-z0-9.-].');
+const DOMAIN_LABEL_REGEX = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+const domainLabels = BASE_DOMAIN.split('.');
+const hasValidBaseDomain =
+  domainLabels.length >= 2 &&
+  domainLabels.every((label) => DOMAIN_LABEL_REGEX.test(label)) &&
+  domainLabels[domainLabels.length - 1].length >= 2;
+if (!hasValidBaseDomain) {
+  throw new Error(
+    'BASE_DOMAIN must be a valid dot-separated domain with labels that start/end with alphanumeric characters and may contain internal hyphens.',
+  );
 }
 
 export const AUTH_SUBDOMAIN =
   process.env.AUTH_SUBDOMAIN?.trim().toLowerCase() || 'auth';
-if (!/^[a-z0-9-]+$/.test(AUTH_SUBDOMAIN)) {
-  throw new Error('AUTH_SUBDOMAIN must contain only [a-z0-9-].');
+if (!DOMAIN_LABEL_REGEX.test(AUTH_SUBDOMAIN)) {
+  throw new Error(
+    'AUTH_SUBDOMAIN must start/end with an alphanumeric character and may contain internal hyphens.',
+  );
 }
 
 function buildSubdomainUrl(subdomain: string): string {
@@ -74,7 +86,7 @@ export const COOKIE_DOMAIN =
   process.env.COOKIE_DOMAIN?.trim() || `.${BASE_DOMAIN}`;
 
 export const AUTH_COOKIE_DOMAIN =
-  process.env.AUTH_COOKIE_DOMAIN?.trim() || COOKIE_DOMAIN || undefined;
+  process.env.AUTH_COOKIE_DOMAIN?.trim() || COOKIE_DOMAIN;
 export const AUTH_COOKIE_NAME =
   process.env.AUTH_COOKIE_NAME?.trim() || 'darkavianlabs.auth.sid';
 export const SESSION_COOKIE_NAME =
@@ -94,8 +106,6 @@ export const SHARED_THEME_COOKIE_DOMAIN =
 
 export function ensureDataDirs(): void {
   for (const dir of [DATA_DIR]) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    fs.mkdirSync(dir, { recursive: true });
   }
 }

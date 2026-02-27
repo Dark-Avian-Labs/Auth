@@ -30,6 +30,15 @@ const DEFAULT_AUTH_STATE: AuthState = {
   apps: [],
 };
 
+function isSafeRelativePath(next: string): boolean {
+  return (
+    next.startsWith('/') &&
+    !next.startsWith('//') &&
+    !next.includes('//') &&
+    !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(next)
+  );
+}
+
 function isAppSummary(value: unknown): value is AppSummary {
   if (!value || typeof value !== 'object') {
     return false;
@@ -72,13 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const logout = useCallback(async (next?: string) => {
+    const redirect = next && isSafeRelativePath(next) ? next : '/login';
     try {
       await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch {
       // Ignore network errors and continue with local redirect.
     } finally {
       clearCsrfToken();
-      window.location.href = next || '/login';
+      window.location.href = redirect;
     }
   }, []);
 
@@ -87,6 +97,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const response = await apiFetch('/api/auth/profile', {
           method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify(updates),
         });
         const body = (await response.json().catch(() => null)) as {

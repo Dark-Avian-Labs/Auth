@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 
+import { AVAILABLE_APPS } from '../../app/config';
 import { APP_PATHS } from '../../app/paths';
 import { Button } from '../../components/ui/Button';
 import { GlassCard } from '../../components/ui/GlassCard';
@@ -30,13 +31,20 @@ function toPermissionPayload(value: string): string[] {
 
 export function AdminPage() {
   const { auth } = useAuth();
+  const availableApps = AVAILABLE_APPS ?? [];
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersError, setUsersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [passwordUser, setPasswordUser] = useState<AdminUser | null>(null);
+  const [passwordValue, setPasswordValue] = useState('');
+  const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const passwordInputId = 'admin-password-input';
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,21 +88,57 @@ export function AdminPage() {
   }
 
   const refreshUsers = async () => {
-    const response = await apiFetch('/api/admin/users');
-    const body = (await response.json()) as { users?: AdminUser[] };
-    if (response.ok && Array.isArray(body.users)) {
-      setUsers(body.users);
+    setUsersError(null);
+    try {
+      const response = await apiFetch('/api/admin/users');
+      if (!response.ok) {
+        const responseText = await response.text().catch(() => '');
+        console.error('Failed to refresh users.', {
+          status: response.status,
+          text: responseText,
+        });
+        setUsersError(
+          `Failed to refresh users (status ${response.status})${
+            responseText ? `: ${responseText}` : '.'
+          }`,
+        );
+        return;
+      }
+
+      const body = (await response.json()) as { users?: AdminUser[] };
+      if (Array.isArray(body.users)) {
+        setUsers(body.users);
+      }
+    } catch (caught) {
+      console.error('Error while refreshing users.', caught);
+      setUsersError(
+        caught instanceof Error ? caught.message : 'Failed to refresh users.',
+      );
     }
   };
 
   const createUser = async () => {
     setError(null);
     setMessage(null);
+    const trimmedUsername = newUsername.trim();
+    if (!trimmedUsername) {
+      setMessage(null);
+      setError('Username is required.');
+      return;
+    }
+    if (!newPassword) {
+      setMessage(null);
+      setError('Password is required.');
+      return;
+    }
     try {
       const response = await apiFetch('/api/admin/users', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          username: newUsername.trim(),
+          username: trimmedUsername,
           password: newPassword,
           is_admin: newIsAdmin,
         }),
@@ -115,52 +159,106 @@ export function AdminPage() {
   };
 
   const toggleAdmin = async (user: AdminUser) => {
-    const response = await apiFetch(`/api/admin/users/${user.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ is_admin: !user.is_admin }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    if (!response.ok) {
-      setError(body?.error || 'Failed to update role.');
-      return;
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await apiFetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_admin: !user.is_admin }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!response.ok) {
+        setError(body?.error || 'Failed to update role.');
+        return;
+      }
+      setMessage('Role updated.');
+      await refreshUsers();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Network error updating role.',
+      );
     }
-    setMessage('Role updated.');
-    await refreshUsers();
   };
 
   const deleteUser = async (user: AdminUser) => {
     if (!window.confirm(`Delete ${user.username}?`)) return;
-    const response = await apiFetch(`/api/admin/users/${user.id}`, {
-      method: 'DELETE',
-    });
-    const body = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    if (!response.ok) {
-      setError(body?.error || 'Failed to delete user.');
-      return;
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await apiFetch(`/api/admin/users/${user.id}`, {
+        method: 'DELETE',
+      });
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!response.ok) {
+        setError(body?.error || 'Failed to delete user.');
+        return;
+      }
+      setMessage('User deleted.');
+      await refreshUsers();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Network error deleting user.',
+      );
     }
-    setMessage('User deleted.');
-    await refreshUsers();
   };
 
-  const changePassword = async (user: AdminUser) => {
-    const value = window.prompt(`Set new password for ${user.username}`);
-    if (!value) return;
-    const response = await apiFetch(`/api/admin/users/${user.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ password: value }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    if (!response.ok) {
-      setError(body?.error || 'Failed to update password.');
-      return;
+  const closePasswordModal = () => {
+    setPasswordUser(null);
+    setPasswordValue('');
+    setPasswordSubmitting(false);
+    previousFocusRef.current?.focus();
+  };
+
+  const openPasswordModal = (user: AdminUser, trigger?: EventTarget | null) => {
+    if (trigger instanceof HTMLElement) {
+      previousFocusRef.current = trigger;
+    } else if (document.activeElement instanceof HTMLElement) {
+      previousFocusRef.current = document.activeElement;
+    } else {
+      previousFocusRef.current = null;
     }
-    setMessage('Password updated.');
+    setPasswordUser(user);
+    setPasswordValue('');
+  };
+
+  const changePassword = async (user: AdminUser, value: string) => {
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await apiFetch(`/api/admin/users/${user.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ password: value }),
+      });
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!response.ok) {
+        setError(body?.error || 'Failed to update password.');
+        return;
+      }
+      setMessage('Password updated.');
+      closePasswordModal();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Network error updating password.',
+      );
+    }
   };
 
   const updateAppAccess = async (
@@ -168,22 +266,35 @@ export function AdminPage() {
     appId: string,
     enabled: boolean,
   ) => {
-    const response = await apiFetch(
-      `/api/admin/users/${user.id}/apps/${encodeURIComponent(appId)}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify({ enabled }),
-      },
-    );
-    const body = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    if (!response.ok) {
-      setError(body?.error || 'Failed to update app access.');
-      return;
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await apiFetch(
+        `/api/admin/users/${user.id}/apps/${encodeURIComponent(appId)}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ enabled }),
+        },
+      );
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!response.ok) {
+        setError(body?.error || 'Failed to update app access.');
+        return;
+      }
+      setMessage('App access updated.');
+      await refreshUsers();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Network error updating app access.',
+      );
     }
-    setMessage('App access updated.');
-    await refreshUsers();
   };
 
   const updatePermissions = async (user: AdminUser, appId: string) => {
@@ -195,22 +306,38 @@ export function AdminPage() {
         .join(','),
     );
     if (raw === null) return;
-    const response = await apiFetch(`/api/admin/users/${user.id}/permissions`, {
-      method: 'PUT',
-      body: JSON.stringify({
-        app_id: appId,
-        permissions: toPermissionPayload(raw),
-      }),
-    });
-    const body = (await response.json().catch(() => null)) as {
-      error?: string;
-    } | null;
-    if (!response.ok) {
-      setError(body?.error || 'Failed to update permissions.');
-      return;
+    setError(null);
+    setMessage(null);
+    try {
+      const response = await apiFetch(
+        `/api/admin/users/${user.id}/permissions`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            app_id: appId,
+            permissions: toPermissionPayload(raw),
+          }),
+        },
+      );
+      const body = (await response.json().catch(() => null)) as {
+        error?: string;
+      } | null;
+      if (!response.ok) {
+        setError(body?.error || 'Failed to update permissions.');
+        return;
+      }
+      setMessage('Permissions updated.');
+      await refreshUsers();
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Network error updating permissions.',
+      );
     }
-    setMessage('Permissions updated.');
-    await refreshUsers();
   };
 
   return (
@@ -258,6 +385,9 @@ export function AdminPage() {
       </GlassCard>
 
       <GlassCard className="overflow-hidden p-0">
+        {usersError ? (
+          <p className="px-4 pt-4 text-sm text-red-400">{usersError}</p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -283,7 +413,7 @@ export function AdminPage() {
                       {user.is_admin ? 'Admin' : 'User'}
                     </td>
                     <td className="px-4 py-3">
-                      {['parametric', 'corpus'].map((appId) => {
+                      {availableApps.map((appId) => {
                         const hasAccess = user.app_access.includes(appId);
                         return (
                           <button
@@ -301,19 +431,33 @@ export function AdminPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
+                        {auth.user?.id === user.id && user.is_admin ? (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="h-8 px-3 text-xs"
+                            disabled
+                            title="You cannot remove your own admin role."
+                          >
+                            Own admin role
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => toggleAdmin(user)}
+                          >
+                            {user.is_admin ? 'Remove admin' : 'Make admin'}
+                          </Button>
+                        )}
                         <Button
                           type="button"
                           variant="secondary"
                           className="h-8 px-3 text-xs"
-                          onClick={() => toggleAdmin(user)}
-                        >
-                          {user.is_admin ? 'Remove admin' : 'Make admin'}
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-8 px-3 text-xs"
-                          onClick={() => changePassword(user)}
+                          onClick={(event) =>
+                            openPasswordModal(user, event.currentTarget)
+                          }
                         >
                           Change password
                         </Button>
@@ -352,6 +496,98 @@ export function AdminPage() {
           </table>
         </div>
       </GlassCard>
+
+      {passwordUser ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-password-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !passwordSubmitting) {
+              closePasswordModal();
+            }
+          }}
+        >
+          <GlassCard
+            className="w-full max-w-md p-6"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !passwordSubmitting) {
+                event.preventDefault();
+                closePasswordModal();
+              }
+            }}
+          >
+            <h2
+              id="admin-password-title"
+              className="text-lg font-semibold text-foreground"
+            >
+              Change password for {passwordUser.username}
+            </h2>
+            <label
+              htmlFor={passwordInputId}
+              className="mt-3 block text-sm text-muted"
+            >
+              New password
+            </label>
+            <input
+              id={passwordInputId}
+              type="password"
+              autoComplete="new-password"
+              className="form-input mt-2 w-full"
+              value={passwordValue}
+              autoFocus
+              onChange={(event) => setPasswordValue(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  if (!passwordUser || passwordSubmitting) return;
+                  const nextValue = passwordValue;
+                  if (!nextValue) {
+                    setMessage(null);
+                    setError('Password is required.');
+                    return;
+                  }
+                  setPasswordSubmitting(true);
+                  void changePassword(passwordUser, nextValue).finally(() => {
+                    setPasswordSubmitting(false);
+                  });
+                }
+              }}
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={closePasswordModal}
+                disabled={passwordSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="accent"
+                onClick={() => {
+                  if (!passwordUser || passwordSubmitting) return;
+                  const nextValue = passwordValue;
+                  if (!nextValue) {
+                    setMessage(null);
+                    setError('Password is required.');
+                    return;
+                  }
+                  setPasswordSubmitting(true);
+                  void changePassword(passwordUser, nextValue).finally(() => {
+                    setPasswordSubmitting(false);
+                  });
+                }}
+                disabled={passwordSubmitting}
+              >
+                {passwordSubmitting ? 'Saving...' : 'Confirm'}
+              </Button>
+            </div>
+          </GlassCard>
+        </div>
+      ) : null}
     </div>
   );
 }

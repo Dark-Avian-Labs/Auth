@@ -76,7 +76,7 @@ const cookieOptions: express.CookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000,
   httpOnly: true,
   secure: SECURE_COOKIES,
-  sameSite: 'none',
+  sameSite: SECURE_COOKIES ? 'none' : 'lax',
   domain: AUTH_COOKIE_DOMAIN,
 };
 
@@ -100,11 +100,11 @@ const { csrfSynchronisedProtection, generateToken } = csrfSync({
   getTokenFromState: (req) => {
     const sessionData = req.session;
     if (!sessionData) return null;
-    return (sessionData as { csrfToken?: string }).csrfToken ?? null;
+    return (sessionData as { csrf_token?: string }).csrf_token ?? null;
   },
   storeTokenInState: (req, token) => {
     if (req.session) {
-      req.session.csrfToken = token as string;
+      req.session.csrf_token = token as string;
     }
   },
 });
@@ -163,7 +163,10 @@ app.get('/logout', (req, res) => {
       ? req.query.next
       : '';
   const next = sanitizeNextUrl(nextInput, '/login');
-  req.session.destroy(() => {
+  req.session.destroy((err) => {
+    if (err) {
+      console.error('[Session] Failed to destroy session:', err);
+    }
     res.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
       secure: SECURE_COOKIES,
@@ -178,7 +181,7 @@ app.use('/api', (_req, res) => {
   res.status(404).json({ error: 'Not found' });
 });
 
-app.get('/healthz', readinessLimiter, (_req, res) => {
+app.get('/healthz', (_req, res) => {
   res.json({ status: 'ok', app: APP_NAME });
 });
 
@@ -246,9 +249,23 @@ app.get('/', publicPageLimiter, ensureAuthenticatedPage, (_req, res) => {
 });
 
 app.use(
-  (err: Error, _req: Request, res: Response, _next: express.NextFunction) => {
-    console.error('[Error]', err.stack ?? err.message);
-    res.status(500).json({ error: 'Internal server error' });
+  (err: unknown, _req: Request, res: Response, _next: express.NextFunction) => {
+    const error = err as Partial<Error> & {
+      status?: number;
+      statusCode?: number;
+    };
+    console.error('[Error]', error.stack ?? error.message);
+    const status =
+      typeof error.status === 'number'
+        ? error.status
+        : typeof error.statusCode === 'number'
+          ? error.statusCode
+          : error.name === 'ForbiddenError'
+            ? 403
+            : 500;
+    res
+      .status(status)
+      .json({ error: error.message ?? 'Internal server error' });
   },
 );
 
@@ -259,11 +276,12 @@ const server = app.listen(PORT, HOST, () => {
 });
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;
+let shutdownStarted = false;
 function shutdown(): void {
-  let done = false;
+  if (shutdownStarted) return;
+  shutdownStarted = true;
+
   function closeAndExit(): void {
-    if (done) return;
-    done = true;
     try {
       db.close();
     } catch (err) {

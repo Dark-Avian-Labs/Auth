@@ -42,10 +42,11 @@ function resolveInitialMode(): ThemeMode {
 function writeThemeCookie(mode: ThemeMode): void {
   const secure = window.location.protocol === 'https:' ? '; Secure' : '';
   const base = `${THEME_COOKIE}=${mode}; Max-Age=${ONE_YEAR_SECONDS}; Path=/; SameSite=Lax${secure}`;
-  document.cookie = base;
   if (THEME_COOKIE_DOMAIN) {
     document.cookie = `${base}; Domain=${THEME_COOKIE_DOMAIN}`;
+    return;
   }
+  document.cookie = base;
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -55,7 +56,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.classList.remove('theme-light', 'theme-dark');
     root.classList.add(`theme-${mode}`);
-    window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+    } catch (error) {
+      console.warn('Failed to persist theme mode to localStorage.', error);
+    }
     writeThemeCookie(mode);
   }, [mode]);
 

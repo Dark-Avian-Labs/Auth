@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import type { ReactNode } from 'react';
 
 interface MenuProps {
@@ -6,12 +7,8 @@ interface MenuProps {
 }
 
 export function Menu({ children, className }: MenuProps) {
-  const classes = ['user-menu', 'glass-surface'];
-  if (className) {
-    classes.push(className);
-  }
   return (
-    <div className={classes.join(' ')} role="menu">
+    <div className={clsx('user-menu', 'glass-surface', className)}>
       {children}
     </div>
   );

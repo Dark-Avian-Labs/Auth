@@ -13,6 +13,8 @@ export function HomePage() {
   }
 
   const cards = auth.apps;
+  const isExternalUrl = (url: string) =>
+    /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url);
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -27,18 +29,33 @@ export function HomePage() {
 
       {cards.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
-          {cards.map((card) => (
-            <a
-              key={card.id}
-              href={card.url}
-              className="glass-surface block rounded-xl border p-4 transition hover:border-[var(--color-accent)]"
-            >
-              <h2 className="text-lg font-semibold text-foreground">
-                {card.label}
-              </h2>
-              <p className="mt-1 text-sm text-muted">{card.subtitle}</p>
-            </a>
-          ))}
+          {cards.map((card) =>
+            isExternalUrl(card.url) ? (
+              <a
+                key={card.id}
+                href={card.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-surface block rounded-xl border p-4 transition hover:border-[var(--color-accent)]"
+              >
+                <h2 className="text-lg font-semibold text-foreground">
+                  {card.label}
+                </h2>
+                <p className="mt-1 text-sm text-muted">{card.subtitle}</p>
+              </a>
+            ) : (
+              <Link
+                key={card.id}
+                to={card.url}
+                className="glass-surface block rounded-xl border p-4 transition hover:border-[var(--color-accent)]"
+              >
+                <h2 className="text-lg font-semibold text-foreground">
+                  {card.label}
+                </h2>
+                <p className="mt-1 text-sm text-muted">{card.subtitle}</p>
+              </Link>
+            ),
+          )}
         </div>
       ) : (
         <GlassCard className="p-6">
@@ -50,9 +67,9 @@ export function HomePage() {
 
       <div className="flex gap-2">
         {auth.user.is_admin ? (
-          <Link to={APP_PATHS.admin} className="btn btn-secondary">
-            Open Admin
-          </Link>
+          <Button asChild variant="secondary">
+            <Link to={APP_PATHS.admin}>Open Admin</Link>
+          </Button>
         ) : null}
         <Button
           type="button"

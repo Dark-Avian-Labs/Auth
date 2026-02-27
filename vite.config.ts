@@ -7,9 +7,13 @@ import { defineConfig, loadEnv } from 'vite';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
+  const env = loadEnv(mode, process.cwd(), 'VITE_');
   const devApiTarget = env.VITE_DEV_API_TARGET || 'http://127.0.0.1:3010';
   const base = env.VITE_BASE_PATH || '/';
+  const sharedProxy = {
+    target: devApiTarget,
+    changeOrigin: true,
+  };
 
   return {
     base,
@@ -26,14 +30,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 5173,
       proxy: {
-        '/api': {
-          target: devApiTarget,
-          changeOrigin: true,
-        },
-        '/logout': {
-          target: devApiTarget,
-          changeOrigin: true,
-        },
+        '/api': sharedProxy,
+        '/logout': sharedProxy,
       },
     },
   };

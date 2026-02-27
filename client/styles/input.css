@@ -15,14 +15,19 @@
   --color-bg-start: #000000;
   --color-bg-end: #0f172a;
   --color-bg-glow: rgba(100, 116, 139, 0.2);
-  --color-light: 0, 0, 0;
-  --color-dark: 255, 255, 255;
+  --color-on-light: 0, 0, 0;
+  --color-on-dark: 255, 255, 255;
   --shadow-panel: 0 8px 32px rgba(0, 0, 0, 0.25);
+  --z-base: 0;
+  --z-dropdown: 60;
+  --z-modal-backdrop: 90;
 }
 
 html.theme-light {
   --color-foreground: #000000;
   --color-muted: #4b5563;
+  --color-on-light: 248, 250, 252;
+  --color-on-dark: 15, 23, 42;
   --color-glass: rgba(255, 255, 255, 0.5);
   --color-glass-border: rgba(57, 57, 57, 0.2);
   --color-glass-border-hover: rgba(57, 57, 57, 0.32);
@@ -99,17 +104,17 @@ html.theme-light {
     font-size: clamp(1.35rem, 2.4vw, 2.25rem);
     font-weight: 600;
     letter-spacing: 0.1em;
-    color: rgb(var(--color-dark));
+    color: rgb(var(--color-on-dark));
     text-shadow:
-      -0.05em 0 0.015em rgba(var(--color-dark), 0.5),
-      0.05em 0 0.015em rgba(var(--color-dark), 0.5);
+      -0.05em 0 0.015em rgba(var(--color-on-dark), 0.5),
+      0.05em 0 0.015em rgba(var(--color-on-dark), 0.5);
   }
 
   .brand-lockup__title.brand-lockup--light {
-    color: rgb(var(--color-light));
+    color: rgb(var(--color-on-light));
     text-shadow:
-      -0.05em 0 0.015em rgba(var(--color-light), 0.5),
-      0.05em 0 0.015em rgba(var(--color-light), 0.5);
+      -0.05em 0 0.015em rgba(var(--color-on-light), 0.5),
+      0.05em 0 0.015em rgba(var(--color-on-light), 0.5);
   }
 
   .btn {
@@ -125,9 +130,21 @@ html.theme-light {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    transition: all 0.2s;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
     background: transparent;
     color: var(--color-foreground);
+  }
+
+  .btn:focus-visible {
+    border-color: var(--color-glass-border-hover);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-bg-start) 40%, transparent),
+      0 0 0 4px var(--color-glass-active);
+    outline: none;
   }
 
   .btn-accent {
@@ -168,7 +185,7 @@ html.theme-light {
     min-width: 180px;
     padding: 6px;
     border-radius: 12px;
-    z-index: 60;
+    z-index: var(--z-dropdown);
   }
 
   .user-menu-item {
@@ -194,6 +211,9 @@ html.theme-light {
     border: 1px solid var(--color-glass-active);
     border-radius: 8px;
     font-family: inherit;
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .form-input.form-input-readonly {
@@ -211,6 +231,28 @@ html.theme-light {
     border: 1px solid var(--color-glass-border);
     border-radius: 1rem;
     backdrop-filter: blur(12px);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .form-input:not(.form-input-readonly):focus,
+  .search-box:focus {
+    border-color: var(--color-glass-active);
+  }
+
+  .form-input:not(.form-input-readonly):focus-visible,
+  .search-box:focus-visible {
+    border-color: var(--color-glass-border-hover);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-bg-start) 40%, transparent),
+      0 0 0 4px var(--color-glass-active);
+    outline: none;
+  }
+
+  .form-input:not(.form-input-readonly):focus:not(:focus-visible),
+  .search-box:focus:not(:focus-visible) {
+    box-shadow: none;
   }
 
   .profile-icon-grid {
@@ -242,7 +284,7 @@ html.theme-light {
   .modal-overlay {
     position: fixed;
     inset: 0;
-    z-index: 90;
+    z-index: var(--z-modal-backdrop);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -273,7 +315,7 @@ html.theme-light {
 .bg-art {
   white-space: pre;
   color: color-mix(in srgb, var(--color-foreground) 5%, transparent);
-  z-index: 0;
+  z-index: var(--z-base);
   pointer-events: none;
   user-select: none;
   font-family: 'Courier New', Courier, monospace;

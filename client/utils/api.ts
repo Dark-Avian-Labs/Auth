@@ -1,24 +1,37 @@
-let cachedToken = '';
+let cachedToken: string | null = null;
 
-async function getCsrfToken(): Promise<string> {
-  if (cachedToken) {
+async function getCsrfToken(): Promise<string | null> {
+  if (cachedToken !== null) {
     return cachedToken;
   }
   try {
     const res = await fetch('/api/auth/csrf');
     if (!res.ok) {
-      return '';
+      const responseBody = await res.text().catch(() => '');
+      console.warn('Failed to fetch CSRF token: non-OK response', {
+        status: res.status,
+        statusText: res.statusText,
+        body: responseBody,
+      });
+      return null;
     }
     const body = (await res.json()) as { csrfToken?: string };
-    cachedToken = body.csrfToken ?? '';
-    return cachedToken;
-  } catch {
-    return '';
+    if (!body.csrfToken) {
+      console.warn('Failed to fetch CSRF token: missing token in response', {
+        body,
+      });
+      return null;
+    }
+    cachedToken = body.csrfToken;
+    return body.csrfToken;
+  } catch (error) {
+    console.warn('Failed to fetch CSRF token: request error', { error });
+    return null;
   }
 }
 
 export function clearCsrfToken(): void {
-  cachedToken = '';
+  cachedToken = null;
 }
 
 export async function apiFetch(
@@ -32,17 +45,10 @@ export async function apiFetch(
   const headers = new Headers(init?.headers);
   if (needsCsrf) {
     const csrfToken = await getCsrfToken();
-    if (csrfToken) {
-      headers.set('X-CSRF-Token', csrfToken);
+    if (csrfToken === null) {
+      throw new Error('Failed to fetch CSRF token');
     }
-  }
-
-  if (
-    !headers.has('Content-Type') &&
-    init?.body &&
-    typeof init.body === 'string'
-  ) {
-    headers.set('Content-Type', 'application/json');
+    headers.set('X-CSRF-Token', csrfToken);
   }
 
   return fetch(url, { ...init, headers });

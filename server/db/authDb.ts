@@ -10,6 +10,7 @@ if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
 
 export const db = new Database(CENTRAL_DB_PATH);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
 function normalizeUsersSchema(): void {
   const rows = db.prepare('PRAGMA table_info(users)').all() as Array<{
@@ -117,7 +118,7 @@ export type UserRow = {
 export function getUserByUsername(username: string): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE LOWER(username)=LOWER(?)',
+      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE username = ?',
     )
     .get(username.trim()) as UserRow | undefined;
 }
@@ -135,6 +136,35 @@ export function getGamesForUser(userId: number): string[] {
     .prepare('SELECT game_id FROM user_game_access WHERE user_id = ?')
     .all(userId) as Array<{ game_id: string }>;
   return rows.map((row) => row.game_id);
+}
+
+export function getGamesForUsers(userIds: number[]): Record<number, string[]> {
+  const uniqueUserIds = Array.from(
+    new Set(userIds.filter((value) => Number.isInteger(value) && value > 0)),
+  );
+  const gamesByUserId: Record<number, string[]> = {};
+  for (const userId of uniqueUserIds) {
+    gamesByUserId[userId] = [];
+  }
+  if (uniqueUserIds.length === 0) {
+    return gamesByUserId;
+  }
+
+  const placeholders = uniqueUserIds.map(() => '?').join(', ');
+  const rows = db
+    .prepare(
+      `SELECT user_id, game_id
+       FROM user_game_access
+       WHERE user_id IN (${placeholders})
+       ORDER BY user_id, game_id`,
+    )
+    .all(...uniqueUserIds) as Array<{ user_id: number; game_id: string }>;
+
+  for (const row of rows) {
+    gamesByUserId[row.user_id] ??= [];
+    gamesByUserId[row.user_id].push(row.game_id);
+  }
+  return gamesByUserId;
 }
 
 export function hasAppAccess(userId: number, appId: string): boolean {
@@ -176,6 +206,47 @@ export function listPermissions(
       'SELECT app_id, permission FROM user_app_permissions WHERE user_id = ? AND (app_id = ? OR app_id = ?) ORDER BY app_id, permission',
     )
     .all(userId, appId, '*') as Array<{ app_id: string; permission: string }>;
+}
+
+export function listPermissionsForUsers(
+  userIds: number[],
+): Record<number, Array<{ app_id: string; permission: string }>> {
+  const uniqueUserIds = Array.from(
+    new Set(userIds.filter((value) => Number.isInteger(value) && value > 0)),
+  );
+  const permissionsByUserId: Record<
+    number,
+    Array<{ app_id: string; permission: string }>
+  > = {};
+  for (const userId of uniqueUserIds) {
+    permissionsByUserId[userId] = [];
+  }
+  if (uniqueUserIds.length === 0) {
+    return permissionsByUserId;
+  }
+
+  const placeholders = uniqueUserIds.map(() => '?').join(', ');
+  const rows = db
+    .prepare(
+      `SELECT user_id, app_id, permission
+       FROM user_app_permissions
+       WHERE user_id IN (${placeholders})
+       ORDER BY user_id, app_id, permission`,
+    )
+    .all(...uniqueUserIds) as Array<{
+    user_id: number;
+    app_id: string;
+    permission: string;
+  }>;
+
+  for (const row of rows) {
+    permissionsByUserId[row.user_id] ??= [];
+    permissionsByUserId[row.user_id].push({
+      app_id: row.app_id,
+      permission: row.permission,
+    });
+  }
+  return permissionsByUserId;
 }
 
 export function replacePermissions(

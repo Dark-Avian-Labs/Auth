@@ -31,10 +31,48 @@ export const TRUST_PROXY =
   process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true';
 export const SECURE_COOKIES =
   process.env.SECURE_COOKIES === '1' || process.env.SECURE_COOKIES === 'true';
-export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN?.trim() || undefined;
+export const BASE_PROTOCOL = 'https';
 
-export const AUTH_PUBLIC_BASE_URL =
-  process.env.AUTH_PUBLIC_BASE_URL?.trim() || 'http://localhost:3010';
+export const BASE_DOMAIN = process.env.BASE_DOMAIN?.trim().toLowerCase() || '';
+if (!BASE_DOMAIN) {
+  throw new Error('BASE_DOMAIN must be set.');
+}
+if (!/^[a-z0-9.-]+$/.test(BASE_DOMAIN)) {
+  throw new Error('BASE_DOMAIN must contain only [a-z0-9.-].');
+}
+
+export const AUTH_SUBDOMAIN =
+  process.env.AUTH_SUBDOMAIN?.trim().toLowerCase() || 'auth';
+if (!/^[a-z0-9-]+$/.test(AUTH_SUBDOMAIN)) {
+  throw new Error('AUTH_SUBDOMAIN must contain only [a-z0-9-].');
+}
+
+function buildSubdomainUrl(subdomain: string): string {
+  return `${BASE_PROTOCOL}://${subdomain}.${BASE_DOMAIN}`;
+}
+
+export const AUTH_PUBLIC_BASE_URL = buildSubdomainUrl(AUTH_SUBDOMAIN);
+
+export const APP_LIST = (process.env.APP_LIST || 'parametric,corpus')
+  .split(',')
+  .map((value) => value.trim().toLowerCase())
+  .filter((value, idx, arr) => value.length > 0 && arr.indexOf(value) === idx);
+if (APP_LIST.length === 0) {
+  throw new Error('APP_LIST must include at least one app id.');
+}
+for (const appId of APP_LIST) {
+  if (!/^[a-z0-9-]+$/.test(appId)) {
+    throw new Error(`APP_LIST contains invalid app id "${appId}".`);
+  }
+}
+
+export const APP_URL_BY_ID = Object.fromEntries(
+  APP_LIST.map((appId) => [appId, buildSubdomainUrl(appId)]),
+) as Record<string, string>;
+
+export const COOKIE_DOMAIN =
+  process.env.COOKIE_DOMAIN?.trim() || `.${BASE_DOMAIN}`;
+
 export const AUTH_COOKIE_DOMAIN =
   process.env.AUTH_COOKIE_DOMAIN?.trim() || COOKIE_DOMAIN || undefined;
 export const AUTH_COOKIE_NAME =
@@ -42,23 +80,13 @@ export const AUTH_COOKIE_NAME =
 export const SESSION_COOKIE_NAME =
   process.env.SESSION_COOKIE_NAME?.trim() || AUTH_COOKIE_NAME;
 
-export const PARAMETRIC_APP_URL =
-  process.env.PARAMETRIC_APP_URL?.trim() || 'http://localhost:3002';
-export const CORPUS_APP_URL =
-  process.env.CORPUS_APP_URL?.trim() || 'http://localhost:3001';
-export const ALLOWED_APP_ORIGINS = (
-  process.env.AUTH_ALLOWED_ORIGINS ??
-  [PARAMETRIC_APP_URL, CORPUS_APP_URL].join(',')
-)
-  .split(',')
-  .map((value) => value.trim())
-  .filter((value) => value.length > 0);
-export const ALLOWED_NEXT_ORIGINS = (
-  process.env.AUTH_ALLOWED_NEXT_ORIGINS ?? ALLOWED_APP_ORIGINS.join(',')
-)
-  .split(',')
-  .map((value) => value.trim())
-  .filter((value) => value.length > 0);
+export const ALLOWED_APP_ORIGINS = Object.values(APP_URL_BY_ID).map(
+  (value) => new URL(value).origin,
+);
+export const ALLOWED_NEXT_ORIGINS = [
+  new URL(AUTH_PUBLIC_BASE_URL).origin,
+  ...ALLOWED_APP_ORIGINS,
+];
 
 export const SHARED_THEME_COOKIE = 'dal.theme.mode';
 export const SHARED_THEME_COOKIE_DOMAIN =

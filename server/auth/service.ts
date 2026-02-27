@@ -3,11 +3,10 @@ import type express from 'express';
 
 import {
   ALLOWED_NEXT_ORIGINS,
+  APP_URL_BY_ID,
   AUTH_COOKIE_DOMAIN,
   AUTH_COOKIE_NAME,
   AUTH_PUBLIC_BASE_URL,
-  CORPUS_APP_URL,
-  PARAMETRIC_APP_URL,
 } from '../config.js';
 import {
   db,
@@ -28,11 +27,6 @@ export const APP_META_BY_ID: Record<
     label: 'Corpus',
     subtitle: 'Collection tracking',
   },
-};
-
-export const APP_URL_BY_ID: Record<string, string> = {
-  parametric: PARAMETRIC_APP_URL,
-  corpus: CORPUS_APP_URL,
 };
 
 export function requestIp(req: express.Request): string {

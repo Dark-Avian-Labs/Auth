@@ -14,7 +14,7 @@ import { apiFetch, clearCsrfToken } from '../../utils/api';
 interface AuthContextValue {
   auth: AuthState;
   refresh: () => Promise<void>;
-  logout: (next?: string) => void;
+  logout: (next?: string) => Promise<void>;
   updateProfile: (updates: {
     display_name?: string;
     email?: string;
@@ -71,10 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
-  const logout = useCallback((next?: string) => {
-    const query = next ? `?next=${encodeURIComponent(next)}` : '';
-    window.location.href = `/logout${query}`;
-    clearCsrfToken();
+  const logout = useCallback(async (next?: string) => {
+    try {
+      await apiFetch('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore network errors and continue with local redirect.
+    } finally {
+      clearCsrfToken();
+      window.location.href = next || '/login';
+    }
   }, []);
 
   const updateProfile = useCallback<AuthContextValue['updateProfile']>(

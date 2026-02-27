@@ -149,6 +149,15 @@ app.use(
 app.use('/api/admin', adminApiRouter);
 
 app.get('/logout', (req, res) => {
+  const fetchSiteHeader = req.headers['sec-fetch-site'];
+  const fetchSite = Array.isArray(fetchSiteHeader)
+    ? fetchSiteHeader[0]
+    : fetchSiteHeader;
+  if (fetchSite === 'cross-site') {
+    res.status(403).json({ error: 'Cross-site logout is not allowed.' });
+    return;
+  }
+
   const nextInput =
     typeof req.query.next === 'string' && req.query.next.length > 0
       ? req.query.next

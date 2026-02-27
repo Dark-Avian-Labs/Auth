@@ -28,6 +28,18 @@ const adminLimiter = rateLimit({
 
 adminApiRouter.use(adminLimiter, requireAdmin);
 
+function sanitizeUsername(raw: string): string {
+  const normalized = raw
+    .normalize('NFKC')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '');
+  if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) {
+    return '';
+  }
+  return normalized;
+}
+
 adminApiRouter.get('/users', (_req: Request, res: Response) => {
   const users = db
     .prepare(
@@ -49,11 +61,13 @@ adminApiRouter.get('/users', (_req: Request, res: Response) => {
 });
 
 adminApiRouter.post('/users', async (req: Request, res: Response) => {
-  const username = String(req.body?.username ?? '').trim();
+  const username = sanitizeUsername(String(req.body?.username ?? ''));
   const password = String(req.body?.password ?? '');
   const isAdmin = Boolean(req.body?.is_admin);
   if (!username || !password) {
-    res.status(400).json({ error: 'username and password are required.' });
+    res.status(400).json({
+      error: 'username and password are required (username: a-z, 0-9, . _ -)',
+    });
     return;
   }
   if (password.length < 8) {
@@ -93,8 +107,13 @@ adminApiRouter.patch('/users/:id', async (req: Request, res: Response) => {
   const updates: string[] = [];
   const values: Array<string | number> = [];
   if (typeof req.body?.username === 'string' && req.body.username.trim()) {
+    const username = sanitizeUsername(req.body.username);
+    if (!username) {
+      res.status(400).json({ error: 'Invalid username format.' });
+      return;
+    }
     updates.push('username = ?');
-    values.push(req.body.username.trim());
+    values.push(username);
   }
   if (typeof req.body?.is_admin === 'boolean') {
     updates.push('is_admin = ?');

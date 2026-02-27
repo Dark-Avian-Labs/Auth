@@ -1,41 +1,65 @@
 {
   "name": "auth",
-  "version": "1.0.0",
-  "description": "Dark Avian Labs Auth Service",
+  "version": "2.0.0",
+  "description": "Dark Avian LABS Auth Service",
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js",
+    "typecheck": "npm run typecheck:server && npm run typecheck:client",
+    "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
+    "typecheck:client": "tsc -p tsconfig.json --noEmit",
+    "build": "npm run typecheck && tsc -p tsconfig.server.json && vite build",
+    "start": "node --env-file=.env dist/server/index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "check-format": "prettier --check ."
+    "check-format": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "engines": {
+    "node": ">=25.0.0"
   },
   "dependencies": {
     "argon2": "^0.44.0",
     "better-sqlite3": "^12.6.2",
     "better-sqlite3-session-store": "^0.1.0",
+    "clsx": "^2.1.1",
     "cookie-parser": "^1.4.7",
     "csrf-sync": "^4.2.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
-    "express-session": "^1.19.0"
+    "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.3",
+    "@tailwindcss/vite": "^4.1.18",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
     "@types/node": "^25.2.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.4",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.16.1",
     "eslint-plugin-n": "^17.24.0",
     "eslint-plugin-promise": "^7.2.1",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
     "prettier": "^3.8.1",
+    "tailwindcss": "^4.1.18",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1",
-    "typescript": "^5.9.3"
+    "vite": "^7.3.1",
+    "vitest": "^4.0.18"
   }
 }

@@ -1,0 +1,168 @@
+import argon2 from 'argon2';
+import type express from 'express';
+
+import {
+  ALLOWED_NEXT_ORIGINS,
+  APP_URL_BY_ID,
+  AUTH_COOKIE_DOMAIN,
+  AUTH_COOKIE_NAME,
+  AUTH_PUBLIC_BASE_URL,
+} from '../config.js';
+import {
+  db,
+  getGamesForUser,
+  getUserById,
+  type UserRow,
+} from '../db/authDb.js';
+
+export const APP_META_BY_ID: Record<
+  string,
+  { label: string; subtitle: string }
+> = {
+  parametric: {
+    label: 'Parametric',
+    subtitle: 'Build planning and management',
+  },
+  corpus: {
+    label: 'Corpus',
+    subtitle: 'Collection tracking',
+  },
+};
+
+export function requestIp(req: express.Request): string {
+  return req.ip ?? 'unknown';
+}
+
+function parseUrlSafe(url: string): URL | null {
+  try {
+    return new URL(url);
+  } catch {
+    return null;
+  }
+}
+
+function isAllowedOrigin(url: URL, allowlist: string[]): boolean {
+  return allowlist.includes(url.origin);
+}
+
+export function sanitizeNextUrl(
+  input: string | undefined,
+  fallbackPath: string,
+): string {
+  const fallback = new URL(fallbackPath, AUTH_PUBLIC_BASE_URL).toString();
+  if (!input || input.length < 1) {
+    return fallback;
+  }
+  const parsed =
+    input.startsWith('/') && !input.startsWith('//')
+      ? new URL(input, AUTH_PUBLIC_BASE_URL)
+      : parseUrlSafe(input);
+  if (!parsed) {
+    return fallback;
+  }
+  if (!isAllowedOrigin(parsed, ALLOWED_NEXT_ORIGINS)) {
+    return fallback;
+  }
+  return parsed.toString();
+}
+
+export async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
+  try {
+    return await argon2.verify(hash, password);
+  } catch {
+    return false;
+  }
+}
+
+export async function hashPassword(password: string): Promise<string> {
+  return await argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 19 * 1024,
+    timeCost: 2,
+    parallelism: 1,
+  });
+}
+
+const deleteSessionsForUser = db.prepare(
+  "DELETE FROM sessions WHERE (json_valid(sess) = 1 AND json_extract(sess, '$.user_id') = ?) OR json_valid(sess) = 0",
+);
+const deleteSessionsForUserTx = db.transaction((userId: number): number => {
+  return deleteSessionsForUser.run(userId).changes;
+});
+
+export function revokeSessionsForUser(userId: number): number {
+  return deleteSessionsForUserTx(userId);
+}
+
+export function clearAuthCookies(res: express.Response): void {
+  const options: express.CookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'none',
+    domain: AUTH_COOKIE_DOMAIN,
+  };
+  res.clearCookie(AUTH_COOKIE_NAME, options);
+}
+
+export function requireAuth(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
+  if (typeof req.session.user_id === 'number' && req.session.user_id > 0) {
+    next();
+    return;
+  }
+  res.status(401).json({ error: 'Authentication required' });
+}
+
+export function requireAdmin(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
+  if (typeof req.session.user_id !== 'number' || req.session.user_id <= 0) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+  const user = getUserById(req.session.user_id);
+  if (!user || !user.is_admin) {
+    req.session.is_admin = false;
+    res.status(403).json({ error: 'Admin access required' });
+    return;
+  }
+  req.session.is_admin = true;
+  next();
+}
+
+export function readSessionUser(req: express.Request): UserRow | null {
+  if (typeof req.session.user_id !== 'number' || req.session.user_id <= 0) {
+    return null;
+  }
+  return getUserById(req.session.user_id) ?? null;
+}
+
+export function buildAppCards(userId: number): Array<{
+  id: string;
+  label: string;
+  subtitle: string;
+  url: string;
+}> {
+  const appAccess = getGamesForUser(userId);
+  return appAccess
+    .map((appId) => {
+      const url = APP_URL_BY_ID[appId];
+      if (!url) {
+        return null;
+      }
+      const meta = APP_META_BY_ID[appId] ?? {
+        label: appId,
+        subtitle: 'Open app',
+      };
+      return { id: appId, label: meta.label, subtitle: meta.subtitle, url };
+    })
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+}

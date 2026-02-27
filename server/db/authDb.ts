@@ -2,9 +2,7 @@ import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
-const DEFAULT_DB_PATH = path.join(DATA_DIR, 'central.db');
-export const CENTRAL_DB_PATH = process.env.CENTRAL_DB_PATH ?? DEFAULT_DB_PATH;
+import { CENTRAL_DB_PATH } from '../config.js';
 
 if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
   fs.mkdirSync(path.dirname(CENTRAL_DB_PATH), { recursive: true });
@@ -12,6 +10,30 @@ if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
 
 export const db = new Database(CENTRAL_DB_PATH);
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+function normalizeUsersSchema(): void {
+  const rows = db.prepare('PRAGMA table_info(users)').all() as Array<{
+    name: string;
+  }>;
+  if (rows.length === 0) return;
+
+  const hasDisplayName = rows.some((row) => row.name === 'display_name');
+  const hasEmail = rows.some((row) => row.name === 'email');
+  const hasAvatar = rows.some((row) => row.name === 'avatar');
+
+  if (!hasDisplayName) {
+    db.exec(
+      "ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''",
+    );
+  }
+  if (!hasEmail) {
+    db.exec("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''");
+  }
+  if (!hasAvatar) {
+    db.exec('ALTER TABLE users ADD COLUMN avatar INTEGER NOT NULL DEFAULT 1');
+  }
+}
 
 function normalizeSessionsSchema(): void {
   const rows = db.prepare('PRAGMA table_info(sessions)').all() as Array<{
@@ -21,13 +43,13 @@ function normalizeSessionsSchema(): void {
 
   const hasExpire = rows.some((row) => row.name === 'expire');
   const hasExpired = rows.some((row) => row.name === 'expired');
-
   if (!hasExpire && hasExpired) {
     db.exec('ALTER TABLE sessions RENAME COLUMN expired TO expire');
   }
 }
 
 export function createSchema(): void {
+  normalizeUsersSchema();
   normalizeSessionsSchema();
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -35,6 +57,9 @@ export function createSchema(): void {
       username TEXT NOT NULL UNIQUE COLLATE NOCASE,
       password_hash TEXT NOT NULL,
       is_admin INTEGER NOT NULL DEFAULT 0,
+      display_name TEXT NOT NULL DEFAULT '',
+      email TEXT NOT NULL DEFAULT '',
+      avatar INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -84,13 +109,16 @@ export type UserRow = {
   username: string;
   password_hash: string;
   is_admin: number;
+  display_name: string;
+  email: string;
+  avatar: number;
   created_at: string;
 };
 
 export function getUserByUsername(username: string): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, created_at FROM users WHERE LOWER(username)=LOWER(?)',
+      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE username = ?',
     )
     .get(username.trim()) as UserRow | undefined;
 }
@@ -98,7 +126,7 @@ export function getUserByUsername(username: string): UserRow | undefined {
 export function getUserById(userId: number): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, created_at FROM users WHERE id = ?',
+      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE id = ?',
     )
     .get(userId) as UserRow | undefined;
 }
@@ -107,7 +135,46 @@ export function getGamesForUser(userId: number): string[] {
   const rows = db
     .prepare('SELECT game_id FROM user_game_access WHERE user_id = ?')
     .all(userId) as Array<{ game_id: string }>;
-  return rows.map((r) => r.game_id);
+  return rows.map((row) => row.game_id);
+}
+
+function queryAndGroupByUserId<TRow extends { user_id: number }, TValue>(
+  userIds: number[],
+  buildSql: (placeholders: string) => string,
+  mapRow: (row: TRow) => TValue,
+): Record<number, TValue[]> {
+  const uniqueUserIds = Array.from(
+    new Set(userIds.filter((value) => Number.isInteger(value) && value > 0)),
+  );
+  const groupedByUserId: Record<number, TValue[]> = {};
+  for (const userId of uniqueUserIds) {
+    groupedByUserId[userId] = [];
+  }
+  if (uniqueUserIds.length === 0) {
+    return groupedByUserId;
+  }
+
+  const placeholders = uniqueUserIds.map(() => '?').join(', ');
+  const rows = db
+    .prepare(buildSql(placeholders))
+    .all(...uniqueUserIds) as TRow[];
+
+  for (const row of rows) {
+    groupedByUserId[row.user_id] ??= [];
+    groupedByUserId[row.user_id].push(mapRow(row));
+  }
+  return groupedByUserId;
+}
+
+export function getGamesForUsers(userIds: number[]): Record<number, string[]> {
+  return queryAndGroupByUserId<{ user_id: number; game_id: string }, string>(
+    userIds,
+    (placeholders) => `SELECT user_id, game_id
+       FROM user_game_access
+       WHERE user_id IN (${placeholders})
+       ORDER BY user_id, game_id`,
+    (row) => row.game_id,
+  );
 }
 
 export function hasAppAccess(userId: number, appId: string): boolean {
@@ -149,6 +216,25 @@ export function listPermissions(
       'SELECT app_id, permission FROM user_app_permissions WHERE user_id = ? AND (app_id = ? OR app_id = ?) ORDER BY app_id, permission',
     )
     .all(userId, appId, '*') as Array<{ app_id: string; permission: string }>;
+}
+
+export function listPermissionsForUsers(
+  userIds: number[],
+): Record<number, Array<{ app_id: string; permission: string }>> {
+  return queryAndGroupByUserId<
+    { user_id: number; app_id: string; permission: string },
+    { app_id: string; permission: string }
+  >(
+    userIds,
+    (placeholders) => `SELECT user_id, app_id, permission
+       FROM user_app_permissions
+       WHERE user_id IN (${placeholders})
+       ORDER BY user_id, app_id, permission`,
+    (row) => ({
+      app_id: row.app_id,
+      permission: row.permission,
+    }),
+  );
 }
 
 export function replacePermissions(

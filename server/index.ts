@@ -244,6 +244,9 @@ app.get('/legal', publicPageLimiter, (_req, res) => {
 app.get('/admin', publicPageLimiter, requireAdmin, (_req, res) => {
   res.sendFile(clientIndexPath);
 });
+app.get('/profile', publicPageLimiter, ensureAuthenticatedPage, (_req, res) => {
+  res.sendFile(clientIndexPath);
+});
 app.get('/', publicPageLimiter, ensureAuthenticatedPage, (_req, res) => {
   res.sendFile(clientIndexPath);
 });

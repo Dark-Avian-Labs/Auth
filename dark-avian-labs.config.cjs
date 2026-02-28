@@ -32,7 +32,7 @@ module.exports = {
     {
       name: 'Corpus',
       namespace: 'dark-avian-labs',
-      script: './dist/server/server/index.js',
+      script: './dist/server/index.js',
       cwd: path.join(APPS_ROOT, 'corpus'),
       interpreter: 'node',
       node_args: '--env-file=.env',

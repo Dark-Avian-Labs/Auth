@@ -1,16 +1,19 @@
-node_modules/
-dist/
-
+# Config
 .env
 .env.local
 .env.*.local
 
+# Data & import (user content)
 data/
-*.log
+import/
+
+# Node
+node_modules/
+dist/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
 
+# OS
 .DS_Store
 Thumbs.db

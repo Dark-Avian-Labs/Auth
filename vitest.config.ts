@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['server/**/*.test.ts', 'client/**/*.test.ts'],
+    setupFiles: ['server/test/setupEnv.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

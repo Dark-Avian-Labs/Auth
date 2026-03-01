@@ -6,13 +6,13 @@ import {
 } from 'express';
 import { rateLimit } from 'express-rate-limit';
 
-import { APP_LIST } from '../config.js';
 import {
   hashPassword,
   requestIp,
   requireAdmin,
   revokeSessionsForUser,
 } from '../auth/service.js';
+import { APP_LIST } from '../config.js';
 import {
   appendAuditLog,
   db,
@@ -270,7 +270,9 @@ adminApiRouter.delete('/users/:id', (req: Request, res: Response) => {
 
 adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
-  const appId = String(req.params.appId || '').trim().toLowerCase();
+  const appId = String(req.params.appId || '')
+    .trim()
+    .toLowerCase();
   if (!Number.isInteger(userId) || userId <= 0 || !appId) {
     res.status(400).json({ error: 'Invalid user id or app id' });
     return;

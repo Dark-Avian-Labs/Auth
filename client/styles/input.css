@@ -180,7 +180,10 @@ html.theme-light {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease;
     backdrop-filter: blur(12px);
   }
 
@@ -288,7 +291,9 @@ html.theme-light {
     border: 1px solid var(--color-glass-border);
     background: var(--color-glass);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
   }
 
   .profile-icon-option:hover {
@@ -352,5 +357,16 @@ html.theme-light {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

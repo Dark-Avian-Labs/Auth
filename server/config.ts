@@ -42,7 +42,10 @@ export const BASE_PROTOCOL =
   process.env.BASE_PROTOCOL ||
   (process.env.NODE_ENV === 'production' ? 'https' : 'http');
 
-export const BASE_DOMAIN = process.env.BASE_DOMAIN?.trim().toLowerCase() || '';
+const defaultBaseDomain =
+  NODE_ENV === 'test' || NODE_ENV === 'development' ? 'example.test' : '';
+export const BASE_DOMAIN =
+  process.env.BASE_DOMAIN?.trim().toLowerCase() || defaultBaseDomain;
 if (!BASE_DOMAIN) {
   throw new Error('BASE_DOMAIN must be set.');
 }

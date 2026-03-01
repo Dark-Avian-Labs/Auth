@@ -148,7 +148,7 @@ app.use(
 );
 app.use('/api/admin', adminApiRouter);
 
-app.get('/logout', (req, res) => {
+app.post('/logout', (req, res) => {
   const fetchSiteHeader = req.headers['sec-fetch-site'];
   const fetchSite = Array.isArray(fetchSiteHeader)
     ? fetchSiteHeader[0]
@@ -170,11 +170,15 @@ app.get('/logout', (req, res) => {
     res.clearCookie(SESSION_COOKIE_NAME, {
       httpOnly: true,
       secure: SECURE_COOKIES,
-      sameSite: 'none',
+      sameSite: SECURE_COOKIES ? 'none' : 'lax',
       domain: AUTH_COOKIE_DOMAIN,
     });
     res.redirect(next);
   });
+});
+
+app.get('/logout', (_req, res) => {
+  res.status(405).json({ error: 'Use POST /logout' });
 });
 
 app.use('/api', (_req, res) => {

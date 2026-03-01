@@ -365,11 +365,13 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
       }
 
       const hash = await hashPassword(newPassword);
-      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(
-        hash,
-        user.id,
-      );
-      revokeSessionsForUser(user.id);
+      db.transaction(() => {
+        db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(
+          hash,
+          user.id,
+        );
+        revokeSessionsForUser(user.id);
+      })();
       appendAuditLog({
         actorUserId: user.id,
         eventType: 'auth.password_change.success',

@@ -49,7 +49,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY_DEV }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SERVER_HOST_DEV }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.SERVER_KNOWN_HOST_DEV }}" >> ~/.ssh/known_hosts
 
       - name: Prepare deployment
         run: |
@@ -79,7 +79,7 @@ jobs:
 
           rsync -av \
           -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
-          dark-avian-labs.config.cjs \
+          dark-avian-labs.dev.config.cjs \
           ${{ secrets.SERVER_USER_DEV }}@${{ secrets.SERVER_HOST_DEV }}:${STACK_PATH}/
 
       - name: Restart PM2

@@ -1,0 +1,94 @@
+name: Deploy Auth Development
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'server/**'
+      - 'client/**'
+      - 'index.html'
+      - 'package*.json'
+      - 'dark-avian-labs.dev.config.cjs'
+      - 'tsconfig*.json'
+      - 'vite.config.ts'
+      - 'favicon.ico'
+      - 'feathers.png'
+      - 'background.txt'
+      - '.github/workflows/deploy-dev.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: blacksmith-2vcpu-ubuntu-2404
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '25'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build
+
+      - name: List built files (debug)
+        run: |
+          ls -la dist/
+          if [ -d dist/static ]; then ls -la dist/static/; fi
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY_DEV }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.SERVER_HOST_DEV }} >> ~/.ssh/known_hosts
+
+      - name: Prepare deployment
+        run: |
+          mkdir -p /tmp/deploy
+          cp -r dist/ /tmp/deploy/
+          cp package*.json /tmp/deploy/
+          if [ -f favicon.ico ]; then cp favicon.ico /tmp/deploy/; fi
+          if [ -f feathers.png ]; then cp feathers.png /tmp/deploy/; fi
+          if [ -f background.txt ]; then cp background.txt /tmp/deploy/; fi
+          cd /tmp/deploy && npm ci --omit=dev
+
+      - name: Deploy to server
+        run: |
+          STACK_PATH="${{ secrets.SERVER_STACK_PATH_DEV }}"
+          if [ -z "$STACK_PATH" ]; then
+            STACK_PATH="$(dirname "${{ secrets.SERVER_PATH_DEV }}")"
+          fi
+
+          rsync -av --delete \
+          --exclude='.env' \
+          --exclude='.env.local' \
+          --exclude='logs/' \
+          --exclude='data/' \
+          -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
+          /tmp/deploy/ \
+          ${{ secrets.SERVER_USER_DEV }}@${{ secrets.SERVER_HOST_DEV }}:${{ secrets.SERVER_PATH_DEV }}/
+
+          rsync -av \
+          -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
+          dark-avian-labs.config.cjs \
+          ${{ secrets.SERVER_USER_DEV }}@${{ secrets.SERVER_HOST_DEV }}:${STACK_PATH}/
+
+      - name: Restart PM2
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
+            ${{ secrets.SERVER_USER_DEV }}@${{ secrets.SERVER_HOST_DEV }} \
+            "cd ${{ secrets.SERVER_PATH_DEV }} && source ~/.nvm/nvm.sh && pm2 restart '[DEV] Auth' --update-env"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -71,12 +71,18 @@ function normalizeSessionsSchema(): void {
 export function createSchema(): void {
   ensureMigrationTable();
   if (!hasMigration('20260301_users_profile_columns')) {
-    normalizeUsersSchema();
-    markMigration('20260301_users_profile_columns');
+    const migrateUsersProfileColumns = db.transaction(() => {
+      normalizeUsersSchema();
+      markMigration('20260301_users_profile_columns');
+    });
+    migrateUsersProfileColumns();
   }
   if (!hasMigration('20260301_sessions_expire_column')) {
-    normalizeSessionsSchema();
-    markMigration('20260301_sessions_expire_column');
+    const migrateSessionsExpireColumn = db.transaction(() => {
+      normalizeSessionsSchema();
+      markMigration('20260301_sessions_expire_column');
+    });
+    migrateSessionsExpireColumn();
   }
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (

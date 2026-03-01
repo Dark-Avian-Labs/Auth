@@ -178,7 +178,8 @@ app.post('/logout', (req, res) => {
 });
 
 app.get('/logout', (_req, res) => {
-  res.status(405).json({ error: 'Use POST /logout' });
+  res.set('Allow', 'POST');
+  return res.status(405).json({ error: 'Use POST /logout' });
 });
 
 app.use('/api', (_req, res) => {

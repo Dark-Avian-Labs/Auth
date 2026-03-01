@@ -1,23 +1,23 @@
-name: Deploy Auth
+name: Deploy Auth Development
 
 permissions:
   contents: read
 
 on:
   push:
-    branches: [main]
+    branches: [development]
     paths:
       - 'server/**'
       - 'client/**'
       - 'index.html'
       - 'package*.json'
-      - 'dark-avian-labs.config.cjs'
+      - 'dark-avian-labs.dev.config.cjs'
       - 'tsconfig*.json'
       - 'vite.config.ts'
       - 'favicon.ico'
       - 'feathers.png'
       - 'background.txt'
-      - '.github/workflows/deploy.yml'
+      - '.github/workflows/deploy-dev.yml'
   workflow_dispatch:
 
 jobs:
@@ -47,9 +47,9 @@ jobs:
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.SSH_PRIVATE_KEY_DEV }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          echo "${{ secrets.SERVER_KNOWN_HOST }}" >> ~/.ssh/known_hosts
+          echo "${{ secrets.SERVER_KNOWN_HOST_DEV }}" >> ~/.ssh/known_hosts
 
       - name: Prepare deployment
         run: |
@@ -63,9 +63,9 @@ jobs:
 
       - name: Deploy to server
         run: |
-          STACK_PATH="${{ secrets.SERVER_STACK_PATH }}"
+          STACK_PATH="${{ secrets.SERVER_STACK_PATH_DEV }}"
           if [ -z "$STACK_PATH" ]; then
-            STACK_PATH="$(dirname "${{ secrets.SERVER_PATH }}")"
+            STACK_PATH="$(dirname "${{ secrets.SERVER_PATH_DEV }}")"
           fi
 
           rsync -av --delete \
@@ -75,19 +75,19 @@ jobs:
           --exclude='data/' \
           -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
           /tmp/deploy/ \
-          ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PATH }}/
+          ${{ secrets.SERVER_USER_DEV }}@${{ secrets.SERVER_HOST_DEV }}:${{ secrets.SERVER_PATH_DEV }}/
 
           rsync -av \
           -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts" \
-          dark-avian-labs.config.cjs \
-          ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${STACK_PATH}/
+          dark-avian-labs.dev.config.cjs \
+          ${{ secrets.SERVER_USER_DEV }}@${{ secrets.SERVER_HOST_DEV }}:${STACK_PATH}/
 
       - name: Restart PM2
         run: |
           ssh -i ~/.ssh/deploy_key \
             -o StrictHostKeyChecking=yes -o UserKnownHostsFile=~/.ssh/known_hosts \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-            "cd ${{ secrets.SERVER_PATH }} && source ~/.nvm/nvm.sh && pm2 restart 'Auth' --update-env"
+            ${{ secrets.SERVER_USER_DEV }}@${{ secrets.SERVER_HOST_DEV }} \
+            "cd ${{ secrets.SERVER_PATH_DEV }} && source ~/.nvm/nvm.sh && pm2 restart '[DEV] Auth' --update-env"
 
       - name: Cleanup SSH key
         if: always()

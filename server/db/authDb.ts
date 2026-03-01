@@ -12,6 +12,26 @@ export const db = new Database(CENTRAL_DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+function ensureMigrationTable(): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schema_migrations (
+      id TEXT PRIMARY KEY,
+      applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+}
+
+function hasMigration(id: string): boolean {
+  const row = db
+    .prepare('SELECT 1 FROM schema_migrations WHERE id = ?')
+    .get(id);
+  return Boolean(row);
+}
+
+function markMigration(id: string): void {
+  db.prepare('INSERT OR IGNORE INTO schema_migrations (id) VALUES (?)').run(id);
+}
+
 function normalizeUsersSchema(): void {
   const rows = db.prepare('PRAGMA table_info(users)').all() as Array<{
     name: string;
@@ -49,8 +69,21 @@ function normalizeSessionsSchema(): void {
 }
 
 export function createSchema(): void {
-  normalizeUsersSchema();
-  normalizeSessionsSchema();
+  ensureMigrationTable();
+  if (!hasMigration('20260301_users_profile_columns')) {
+    const migrateUsersProfileColumns = db.transaction(() => {
+      normalizeUsersSchema();
+      markMigration('20260301_users_profile_columns');
+    });
+    migrateUsersProfileColumns();
+  }
+  if (!hasMigration('20260301_sessions_expire_column')) {
+    const migrateSessionsExpireColumn = db.transaction(() => {
+      normalizeSessionsSchema();
+      markMigration('20260301_sessions_expire_column');
+    });
+    migrateSessionsExpireColumn();
+  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

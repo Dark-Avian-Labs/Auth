@@ -1,4 +1,4 @@
-name: Check Linting
+name: Run Tests
 
 permissions:
   contents: read
@@ -7,7 +7,7 @@ on:
   pull_request:
 
 jobs:
-  lint:
+  test:
     runs-on: blacksmith-2vcpu-ubuntu-2404
 
     steps:
@@ -23,8 +23,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Build project
+        run: npm run build
 
-      - name: Lint code
-        run: npm run lint
+      - name: Run tests
+        run: npm run test

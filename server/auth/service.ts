@@ -7,6 +7,7 @@ import {
   AUTH_COOKIE_DOMAIN,
   AUTH_COOKIE_NAME,
   AUTH_PUBLIC_BASE_URL,
+  SECURE_COOKIES,
 } from '../config.js';
 import {
   db,
@@ -100,8 +101,8 @@ export function revokeSessionsForUser(userId: number): number {
 export function clearAuthCookies(res: express.Response): void {
   const options: express.CookieOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: 'none',
+    secure: SECURE_COOKIES,
+    sameSite: SECURE_COOKIES ? 'none' : 'lax',
     domain: AUTH_COOKIE_DOMAIN,
   };
   res.clearCookie(AUTH_COOKIE_NAME, options);

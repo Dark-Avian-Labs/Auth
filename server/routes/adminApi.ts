@@ -12,6 +12,7 @@ import {
   requireAdmin,
   revokeSessionsForUser,
 } from '../auth/service.js';
+import { APP_LIST } from '../config.js';
 import {
   appendAuditLog,
   db,
@@ -31,6 +32,7 @@ const ALLOWED_PERMISSIONS = new Set<string>([
   'delete',
   'admin',
 ]);
+const ALLOWED_APP_IDS = new Set<string>(APP_LIST);
 
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -201,15 +203,23 @@ adminApiRouter.patch(
       }
 
       values.push(userId);
-      const result = db
-        .prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`)
-        .run(...values);
-      if (result.changes < 1) {
+      const shouldRevoke =
+        typeof req.body?.is_admin === 'boolean' || passwordUpdated;
+      const updateUserWithSideEffects = db.transaction(() => {
+        const result = db
+          .prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`)
+          .run(...values);
+        if (result.changes < 1) {
+          return false;
+        }
+        if (shouldRevoke) {
+          revokeSessionsForUser(userId);
+        }
+        return true;
+      });
+      if (!updateUserWithSideEffects()) {
         res.status(404).json({ error: 'User not found' });
         return;
-      }
-      if (typeof req.body?.is_admin === 'boolean' || passwordUpdated) {
-        revokeSessionsForUser(userId);
       }
       appendAuditLog({
         actorUserId: req.session.user_id!,
@@ -236,12 +246,18 @@ adminApiRouter.delete('/users/:id', (req: Request, res: Response) => {
     res.status(400).json({ error: 'Cannot delete your own account' });
     return;
   }
-  const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
-  if (result.changes < 1) {
+  const deleteUserWithSideEffects = db.transaction(() => {
+    const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+    if (result.changes < 1) {
+      return false;
+    }
+    revokeSessionsForUser(userId);
+    return true;
+  });
+  if (!deleteUserWithSideEffects()) {
     res.status(404).json({ error: 'User not found' });
     return;
   }
-  revokeSessionsForUser(userId);
   appendAuditLog({
     actorUserId: req.session.user_id!,
     eventType: 'admin.user.delete',
@@ -254,9 +270,15 @@ adminApiRouter.delete('/users/:id', (req: Request, res: Response) => {
 
 adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
-  const appId = String(req.params.appId || '').trim();
+  const appId = String(req.params.appId || '')
+    .trim()
+    .toLowerCase();
   if (!Number.isInteger(userId) || userId <= 0 || !appId) {
     res.status(400).json({ error: 'Invalid user id or app id' });
+    return;
+  }
+  if (!ALLOWED_APP_IDS.has(appId)) {
+    res.status(400).json({ error: 'Unknown app id' });
     return;
   }
   const user = getUserById(userId);
@@ -279,13 +301,19 @@ adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {
 
 adminApiRouter.put('/users/:id/permissions', (req: Request, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
-  const appId = String(req.body?.app_id ?? '').trim();
+  const appId = String(req.body?.app_id ?? '')
+    .trim()
+    .toLowerCase();
   const rawPermissions: unknown[] = Array.isArray(req.body?.permissions)
     ? req.body.permissions
     : [];
 
   if (!Number.isInteger(userId) || userId <= 0 || !appId) {
     res.status(400).json({ error: 'Invalid user id or app_id' });
+    return;
+  }
+  if (!ALLOWED_APP_IDS.has(appId)) {
+    res.status(400).json({ error: 'Unknown app_id' });
     return;
   }
   const user = getUserById(userId);

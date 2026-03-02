@@ -7,7 +7,6 @@ process.env.AUTH_SUBDOMAIN ??= 'auth';
 process.env.APP_LIST ??= 'parametric,corpus';
 process.env.CENTRAL_DB_PATH = path.join(process.cwd(), 'data', 'auth.test.db');
 
-// Backward compatibility for branches/config variants that read this directly.
 process.env.APP_PUBLIC_BASE_URL ??= 'https://auth.example.test';
 
 const { createSchema } = await import('../db/authDb.js');

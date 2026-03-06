@@ -83,7 +83,16 @@ export function LoginPage() {
       await refresh();
       if (typeof body?.next === 'string') {
         if (isAbsoluteHttpUrl(body.next)) {
-          window.location.href = body.next;
+          try {
+            const targetUrl = new URL(body.next);
+            if (targetUrl.origin === window.location.origin) {
+              window.location.href = targetUrl.href;
+              return;
+            }
+          } catch {
+            // ignore malformed absolute URL and fall through to safe redirect
+          }
+          navigate(APP_PATHS.home);
           return;
         }
         if (isSafeRelativePath(body.next)) {

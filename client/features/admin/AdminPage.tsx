@@ -43,12 +43,35 @@ export function AdminPage() {
   const [passwordUser, setPasswordUser] = useState<AdminUser | null>(null);
   const [passwordValue, setPasswordValue] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
+  const [permissionsUser, setPermissionsUser] = useState<AdminUser | null>(
+    null,
+  );
+  const [permissionsAppId, setPermissionsAppId] = useState<string | null>(null);
+  const [permissionsValue, setPermissionsValue] = useState('');
+  const [permissionsValidationError, setPermissionsValidationError] = useState<
+    string | null
+  >(null);
+  const [permissionsSubmitting, setPermissionsSubmitting] = useState(false);
   const passwordInputId = 'admin-password-input';
+  const permissionsInputId = 'admin-permissions-input';
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const passwordModalRef = useRef<HTMLDivElement | null>(null);
+  const permissionsModalRef = useRef<HTMLDivElement | null>(null);
 
   const getPasswordModalFocusableElements = () => {
     const modalElement = passwordModalRef.current;
+    if (!modalElement) return [] as HTMLElement[];
+
+    const focusableSelector =
+      'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+
+    return Array.from(
+      modalElement.querySelectorAll<HTMLElement>(focusableSelector),
+    );
+  };
+
+  const getPermissionsModalFocusableElements = () => {
+    const modalElement = permissionsModalRef.current;
     if (!modalElement) return [] as HTMLElement[];
 
     const focusableSelector =
@@ -103,6 +126,18 @@ export function AdminPage() {
 
     passwordModalRef.current?.focus();
   }, [passwordUser]);
+
+  useEffect(() => {
+    if (!permissionsUser) return;
+
+    const focusableElements = getPermissionsModalFocusableElements();
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+      return;
+    }
+
+    permissionsModalRef.current?.focus();
+  }, [permissionsUser]);
 
   if (auth.status !== 'ok') {
     return <Navigate to={APP_PATHS.login} replace />;
@@ -337,14 +372,20 @@ export function AdminPage() {
   };
 
   const updatePermissions = async (user: AdminUser, appId: string) => {
-    const raw = window.prompt(
-      `Permissions for ${user.username} on ${appId} (comma-separated)`,
-      user.permissions
-        .filter((entry) => entry.app_id === appId)
-        .map((entry) => entry.permission)
-        .join(','),
-    );
-    if (raw === null) return;
+    if (!appId) {
+      setPermissionsValidationError('App id is required.');
+      return;
+    }
+
+    const parsedPermissions = toPermissionPayload(permissionsValue);
+    if (permissionsValue.trim().length > 0 && parsedPermissions.length === 0) {
+      setPermissionsValidationError(
+        'Enter one or more permissions separated by commas.',
+      );
+      return;
+    }
+
+    setPermissionsValidationError(null);
     setError(null);
     setMessage(null);
     try {
@@ -357,7 +398,7 @@ export function AdminPage() {
           },
           body: JSON.stringify({
             app_id: appId,
-            permissions: toPermissionPayload(raw),
+            permissions: parsedPermissions,
           }),
         },
       );
@@ -369,6 +410,7 @@ export function AdminPage() {
         return;
       }
       setMessage('Permissions updated.');
+      closePermissionsModal();
       await refreshUsers();
     } catch (caught) {
       setError(
@@ -377,6 +419,48 @@ export function AdminPage() {
           : 'Network error updating permissions.',
       );
     }
+  };
+
+  const closePermissionsModal = () => {
+    setPermissionsUser(null);
+    setPermissionsAppId(null);
+    setPermissionsValue('');
+    setPermissionsValidationError(null);
+    setPermissionsSubmitting(false);
+    previousFocusRef.current?.focus();
+  };
+
+  const openPermissionsModal = (
+    user: AdminUser,
+    appId: string,
+    trigger?: EventTarget | null,
+  ) => {
+    if (trigger instanceof HTMLElement) {
+      previousFocusRef.current = trigger;
+    } else if (document.activeElement instanceof HTMLElement) {
+      previousFocusRef.current = document.activeElement;
+    } else {
+      previousFocusRef.current = null;
+    }
+
+    const currentPermissions = user.permissions
+      .filter((entry) => entry.app_id === appId)
+      .map((entry) => entry.permission)
+      .join(',');
+
+    setPermissionsUser(user);
+    setPermissionsAppId(appId);
+    setPermissionsValue(currentPermissions);
+    setPermissionsValidationError(null);
+  };
+
+  const submitPermissionsChange = () => {
+    if (!permissionsUser || !permissionsAppId || permissionsSubmitting) return;
+
+    setPermissionsSubmitting(true);
+    void updatePermissions(permissionsUser, permissionsAppId).finally(() => {
+      setPermissionsSubmitting(false);
+    });
   };
 
   return (
@@ -504,7 +588,13 @@ export function AdminPage() {
                           type="button"
                           variant="secondary"
                           className="h-8 px-3 text-xs"
-                          onClick={() => updatePermissions(user, 'parametric')}
+                          onClick={(event) =>
+                            openPermissionsModal(
+                              user,
+                              'parametric',
+                              event.currentTarget,
+                            )
+                          }
                         >
                           Param perms
                         </Button>
@@ -512,7 +602,13 @@ export function AdminPage() {
                           type="button"
                           variant="secondary"
                           className="h-8 px-3 text-xs"
-                          onClick={() => updatePermissions(user, 'corpus')}
+                          onClick={(event) =>
+                            openPermissionsModal(
+                              user,
+                              'corpus',
+                              event.currentTarget,
+                            )
+                          }
                         >
                           Corpus perms
                         </Button>
@@ -643,6 +739,133 @@ export function AdminPage() {
                   disabled={passwordSubmitting}
                 >
                   {passwordSubmitting ? 'Saving...' : 'Confirm'}
+                </Button>
+              </div>
+            </GlassCard>
+          </div>
+        </div>
+      ) : null}
+
+      {permissionsUser && permissionsAppId ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-permissions-title"
+          onClick={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !permissionsSubmitting
+            ) {
+              closePermissionsModal();
+            }
+          }}
+        >
+          <div
+            ref={permissionsModalRef}
+            className="w-full max-w-md"
+            tabIndex={-1}
+            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+              if (event.key === 'Escape' && !permissionsSubmitting) {
+                event.preventDefault();
+                closePermissionsModal();
+                return;
+              }
+
+              if (event.key !== 'Tab') {
+                return;
+              }
+
+              const focusableElements = getPermissionsModalFocusableElements();
+              if (focusableElements.length === 0) {
+                event.preventDefault();
+                permissionsModalRef.current?.focus();
+                return;
+              }
+
+              const firstElement = focusableElements[0];
+              const lastElement =
+                focusableElements[focusableElements.length - 1];
+              const activeElement =
+                document.activeElement as HTMLElement | null;
+              const modalElement = permissionsModalRef.current;
+
+              if (event.shiftKey) {
+                if (
+                  !activeElement ||
+                  activeElement === firstElement ||
+                  !modalElement?.contains(activeElement)
+                ) {
+                  event.preventDefault();
+                  lastElement.focus();
+                }
+                return;
+              }
+
+              if (
+                !activeElement ||
+                activeElement === lastElement ||
+                !modalElement?.contains(activeElement)
+              ) {
+                event.preventDefault();
+                firstElement.focus();
+              }
+            }}
+          >
+            <GlassCard className="p-6">
+              <h2
+                id="admin-permissions-title"
+                className="text-lg font-semibold text-foreground"
+              >
+                Permissions for {permissionsUser.username} on {permissionsAppId}
+              </h2>
+              <label
+                htmlFor={permissionsInputId}
+                className="mt-3 block text-sm text-muted"
+              >
+                Comma-separated permissions
+              </label>
+              <Input
+                id={permissionsInputId}
+                type="text"
+                className="mt-2 w-full"
+                value={permissionsValue}
+                autoFocus
+                onChange={(event) => {
+                  setPermissionsValue(event.target.value);
+                  if (permissionsValidationError) {
+                    setPermissionsValidationError(null);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    submitPermissionsChange();
+                  }
+                }}
+                placeholder="read,write"
+              />
+              {permissionsValidationError ? (
+                <p className="mt-2 text-sm text-red-400">
+                  {permissionsValidationError}
+                </p>
+              ) : null}
+              <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={closePermissionsModal}
+                  disabled={permissionsSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="accent"
+                  onClick={submitPermissionsChange}
+                  disabled={permissionsSubmitting}
+                >
+                  {permissionsSubmitting ? 'Saving...' : 'Confirm'}
                 </Button>
               </div>
             </GlassCard>

@@ -20,5 +20,9 @@ export function RequireAuth({ children }: { children: ReactElement }) {
     return <Navigate to={APP_PATHS.login} replace state={{ from: location }} />;
   }
 
+  if (auth.status === 'error') {
+    return <Navigate to={APP_PATHS.login} replace state={{ from: location }} />;
+  }
+
   return children;
 }

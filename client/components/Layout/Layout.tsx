@@ -41,7 +41,7 @@ export function Layout() {
     if (!menuOpen) {
       return undefined;
     }
-    const onMouseDown = (event: MouseEvent) => {
+    const onMouseDown = (event: globalThis.MouseEvent) => {
       if (!menuRef.current?.contains(event.target as Node)) {
         setMenuOpen(false);
       }
@@ -78,7 +78,9 @@ export function Layout() {
 
   const isLoggedIn = auth.status === 'ok' && auth.user !== null;
   const isAdmin = auth.user?.is_admin === true;
-  const avatarId = Number(auth.user?.avatar ?? 1);
+  const rawAvatarId = Number(auth.user?.avatar);
+  const avatarId =
+    Number.isFinite(rawAvatarId) && rawAvatarId !== 0 ? rawAvatarId : 1;
   const avatarSrc = getProfileIconSrc(avatarId);
 
   return (

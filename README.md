@@ -36,7 +36,7 @@ Auth is the shared authentication and authorization service used by Parametric a
 
 | Variable                    | Description                                             |
 | --------------------------- | ------------------------------------------------------- |
-| `PORT`, `HOST`              | Server bind address (defaults: `3010`, `127.0.0.1`).    |
+| `PORT`, `HOST`              | Server bind address (defaults: `3000`, `127.0.0.1`).    |
 | `SESSION_SECRET`            | Required; 32+ characters.                               |
 | `TRUST_PROXY`               | Set to `1` behind reverse proxy.                        |
 | `CENTRAL_DB_PATH`           | Central SQLite DB path (shared with Parametric/Corpus). |

@@ -9,7 +9,7 @@ import tseslint from 'typescript-eslint';
 
 export default [
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '*.php', 'tests/**', '*.cjs'],
+    ignores: ['**/dist/**', '**/node_modules/**', '*.php', '*.cjs'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,

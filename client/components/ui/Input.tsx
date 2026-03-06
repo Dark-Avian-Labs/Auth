@@ -9,8 +9,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   ref,
 ) {
   const classes = ['form-input'];
-  const isReadOnly = Boolean(props.readOnly || readOnlyStyle);
-  if (isReadOnly) {
+  const useReadOnlyClass = Boolean(readOnlyStyle);
+  if (useReadOnlyClass) {
     classes.push('form-input-readonly');
   }
   if (className) {
@@ -20,7 +20,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     <input
       {...props}
       ref={ref}
-      readOnly={isReadOnly}
+      readOnly={props.readOnly}
       className={classes.join(' ')}
     />
   );

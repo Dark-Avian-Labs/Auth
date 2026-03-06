@@ -192,6 +192,15 @@ html.theme-light {
     overflow: hidden;
   }
 
+  .icon-toggle-btn:focus-visible,
+  .profile-avatar-btn:focus-visible {
+    border-color: var(--color-glass-border-hover);
+    box-shadow:
+      0 0 0 2px color-mix(in srgb, var(--color-bg-start) 40%, transparent),
+      0 0 0 4px var(--color-glass-active);
+    outline: none;
+  }
+
   .profile-avatar-image {
     width: 100%;
     height: 100%;

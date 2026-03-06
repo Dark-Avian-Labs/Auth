@@ -88,7 +88,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 const deleteSessionsForUser = db.prepare(
-  "DELETE FROM sessions WHERE (json_valid(sess) = 1 AND json_extract(sess, '$.user_id') = ?) OR json_valid(sess) = 0",
+  "DELETE FROM sessions WHERE json_valid(sess) = 1 AND json_extract(sess, '$.user_id') = ?",
 );
 const deleteSessionsForUserTx = db.transaction((userId: number): number => {
   return deleteSessionsForUser.run(userId).changes;
@@ -100,6 +100,7 @@ export function revokeSessionsForUser(userId: number): number {
 
 export function clearAuthCookies(res: express.Response): void {
   const options: express.CookieOptions = {
+    path: '/',
     httpOnly: true,
     secure: SECURE_COOKIES,
     sameSite: SECURE_COOKIES ? 'none' : 'lax',

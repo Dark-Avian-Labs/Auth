@@ -39,8 +39,7 @@ export const TRUST_PROXY = parseBooleanEnv(process.env.TRUST_PROXY) ?? false;
 export const SECURE_COOKIES =
   parseBooleanEnv(process.env.SECURE_COOKIES) ?? NODE_ENV === 'production';
 export const BASE_PROTOCOL =
-  process.env.BASE_PROTOCOL ||
-  (process.env.NODE_ENV === 'production' ? 'https' : 'http');
+  process.env.BASE_PROTOCOL || (NODE_ENV === 'production' ? 'https' : 'http');
 
 const defaultBaseDomain =
   NODE_ENV === 'test' || NODE_ENV === 'development' ? 'example.test' : '';
@@ -83,7 +82,7 @@ if (APP_LIST.length === 0) {
   throw new Error('APP_LIST must include at least one app id.');
 }
 for (const appId of APP_LIST) {
-  if (!/^[a-z0-9-]+$/.test(appId)) {
+  if (!DOMAIN_LABEL_REGEX.test(appId)) {
     throw new Error(`APP_LIST contains invalid app id "${appId}".`);
   }
 }

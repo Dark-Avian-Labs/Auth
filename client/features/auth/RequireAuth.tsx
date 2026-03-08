@@ -1,16 +1,42 @@
-import type { ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
 import { useAuth } from './AuthContext';
 import { APP_PATHS } from '../../app/paths';
 
 export function RequireAuth({ children }: { children: ReactElement }) {
-  const { auth } = useAuth();
+  const { auth, refresh, logout } = useAuth();
   const location = useLocation();
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer =
+      auth.status === 'rate_limited'
+        ? window.setInterval(() => {
+            setNowMs(Date.now());
+          }, 1000)
+        : null;
+    return () => {
+      if (timer !== null) {
+        window.clearInterval(timer);
+      }
+    };
+  }, [auth.status]);
+
+  const secondsRemaining = useMemo(() => {
+    if (auth.status !== 'rate_limited' || !auth.rateLimitedUntilMs) return 0;
+    return Math.max(0, Math.ceil((auth.rateLimitedUntilMs - nowMs) / 1000));
+  }, [auth, nowMs]);
+
+  useEffect(() => {
+    if (auth.status !== 'rate_limited') return;
+    if (secondsRemaining > 0) return;
+    void refresh();
+  }, [auth.status, secondsRemaining, refresh]);
 
   if (auth.status === 'loading') {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center p-6">
         <p className="text-muted">Checking session...</p>
       </div>
     );
@@ -20,8 +46,82 @@ export function RequireAuth({ children }: { children: ReactElement }) {
     return <Navigate to={APP_PATHS.login} replace state={{ from: location }} />;
   }
 
+  if (auth.status === 'forbidden') {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="glass-panel max-w-md p-6 text-center">
+          <h1 className="mb-2 text-xl font-semibold text-foreground">
+            Access denied
+          </h1>
+          <p className="mb-4 text-sm text-muted">
+            Your account is authenticated but does not have access to this
+            application.
+          </p>
+          <button
+            className="btn btn-accent"
+            type="button"
+            onClick={() => {
+              void logout();
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (auth.status === 'error') {
-    return <Navigate to={APP_PATHS.login} replace state={{ from: location }} />;
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="glass-panel max-w-md p-6 text-center">
+          <h1 className="mb-2 text-xl font-semibold text-foreground">
+            Auth check failed
+          </h1>
+          <p className="mb-4 text-sm text-muted">
+            We could not verify your session right now. Please try again.
+          </p>
+          <button
+            className="btn btn-accent"
+            type="button"
+            onClick={() => {
+              void refresh();
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (auth.status === 'rate_limited') {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="glass-panel max-w-md p-6 text-center">
+          <h1 className="mb-2 text-xl font-semibold text-foreground">
+            Too many requests
+          </h1>
+          <p className="mb-4 text-sm text-muted">
+            Authentication checks are temporarily rate limited. Please wait
+            before trying again.
+          </p>
+          <div className="mb-4 text-2xl font-semibold text-warning">
+            {secondsRemaining}s
+          </div>
+          <button
+            className="btn btn-accent"
+            type="button"
+            onClick={() => {
+              void refresh();
+            }}
+            disabled={secondsRemaining > 0}
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return children;

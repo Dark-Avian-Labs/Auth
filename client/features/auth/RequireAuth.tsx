@@ -4,14 +4,21 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { APP_PATHS } from '../../app/paths';
 
+const MAX_AUTO_RETRIES = 5;
+const BASE_RETRY_DELAY_MS = 1000;
+
 export function RequireAuth({ children }: { children: ReactElement }) {
   const { auth, refresh, logout } = useAuth();
   const location = useLocation();
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [retryCount, setRetryCount] = useState(0);
+  const authErrorMessage = auth.error?.message;
 
   useEffect(() => {
     const timer =
-      auth.status === 'rate_limited'
+      auth.status === 'rate_limited' &&
+      typeof auth.rateLimitedUntilMs === 'number' &&
+      auth.rateLimitedUntilMs > nowMs
         ? window.setInterval(() => {
             setNowMs(Date.now());
           }, 1000)
@@ -21,18 +28,37 @@ export function RequireAuth({ children }: { children: ReactElement }) {
         window.clearInterval(timer);
       }
     };
-  }, [auth.status]);
+  }, [auth.status, auth.rateLimitedUntilMs, nowMs]);
 
   const secondsRemaining = useMemo(() => {
     if (auth.status !== 'rate_limited' || !auth.rateLimitedUntilMs) return 0;
     return Math.max(0, Math.ceil((auth.rateLimitedUntilMs - nowMs) / 1000));
-  }, [auth, nowMs]);
+  }, [auth.status, auth.rateLimitedUntilMs, nowMs]);
 
   useEffect(() => {
-    if (auth.status !== 'rate_limited') return;
-    if (secondsRemaining > 0) return;
-    void refresh();
-  }, [auth.status, secondsRemaining, refresh]);
+    if (auth.status === 'rate_limited') return;
+    setRetryCount(0);
+  }, [auth.status]);
+
+  useEffect(() => {
+    let timer: number | null = null;
+    if (
+      auth.status === 'rate_limited' &&
+      secondsRemaining === 0 &&
+      retryCount < MAX_AUTO_RETRIES
+    ) {
+      const delayMs = BASE_RETRY_DELAY_MS * 2 ** retryCount;
+      timer = window.setTimeout(() => {
+        setRetryCount((count) => count + 1);
+        void refresh();
+      }, delayMs);
+    }
+    return () => {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+      }
+    };
+  }, [auth.status, secondsRemaining, retryCount, refresh]);
 
   if (auth.status === 'loading') {
     return (
@@ -79,7 +105,8 @@ export function RequireAuth({ children }: { children: ReactElement }) {
             Auth check failed
           </h1>
           <p className="mb-4 text-sm text-muted">
-            We could not verify your session right now. Please try again.
+            {authErrorMessage ||
+              'We could not verify your session right now. Please try again.'}
           </p>
           <button
             className="btn btn-accent"

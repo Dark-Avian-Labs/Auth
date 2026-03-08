@@ -35,5 +35,5 @@ export interface AuthState {
   user: RemoteAuthUser | null;
   apps: AppSummary[];
   rateLimitedUntilMs?: number;
-  error?: string | { message: string };
+  error?: { message: string };
 }

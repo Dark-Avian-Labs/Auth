@@ -103,7 +103,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (body.has_game_access === false) {
-        setAuth({ status: 'forbidden', user: null, apps: [] });
+        setAuth((prev) => ({
+          status: 'forbidden',
+          user: body.user ?? prev.user,
+          apps: [],
+        }));
         return;
       }
       const apps = Array.isArray(body.apps)
@@ -111,12 +115,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         : [];
       setAuth({ status: 'ok', user: body.user, apps });
     } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message || error.toString()
+          : String(error);
       setAuth({
         status: 'error',
         user: null,
         apps: [],
-        error:
-          error instanceof Error ? error : { message: 'Auth check failed' },
+        error: { message },
       });
     }
   }, []);

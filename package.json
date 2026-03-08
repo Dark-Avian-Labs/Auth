@@ -10,6 +10,7 @@
     "typecheck:client": "tsc -p tsconfig.json --noEmit",
     "build": "npm run typecheck && tsc -p tsconfig.server.json && vite build",
     "start": "node --env-file=.env dist/server/index.js",
+    "validate": "node run-quality-checks.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",

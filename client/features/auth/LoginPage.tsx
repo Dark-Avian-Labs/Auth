@@ -90,7 +90,7 @@ export function LoginPage() {
               return;
             }
           } catch {
-            // ignore malformed absolute URL and fall through to safe redirect
+            // ignore
           }
           navigate(APP_PATHS.home);
           return;

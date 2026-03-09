@@ -12,6 +12,10 @@ import {
   verifyPassword,
 } from '../auth/service.js';
 import {
+  AUTH_API_RATE_LIMIT_MAX,
+  AUTH_API_RATE_LIMIT_WINDOW_MS,
+} from '../config.js';
+import {
   appendAuditLog,
   db,
   getGamesForUser,
@@ -28,8 +32,8 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
   const authRouter = Router();
 
   const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 120,
+    windowMs: AUTH_API_RATE_LIMIT_WINDOW_MS,
+    max: AUTH_API_RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
   });

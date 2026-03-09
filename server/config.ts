@@ -35,6 +35,17 @@ function parseBooleanEnv(value: string | undefined): boolean | undefined {
   return undefined;
 }
 
+function parsePositiveIntEnv(
+  value: string | undefined,
+  fallback: number,
+): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
 export const TRUST_PROXY = parseBooleanEnv(process.env.TRUST_PROXY) ?? false;
 export const SECURE_COOKIES =
   parseBooleanEnv(process.env.SECURE_COOKIES) ?? NODE_ENV === 'production';
@@ -112,6 +123,15 @@ export const ALLOWED_NEXT_ORIGINS = [
 export const SHARED_THEME_COOKIE = 'dal.theme.mode';
 export const SHARED_THEME_COOKIE_DOMAIN =
   process.env.SHARED_THEME_COOKIE_DOMAIN?.trim() || AUTH_COOKIE_DOMAIN || '';
+
+export const AUTH_API_RATE_LIMIT_WINDOW_MS = parsePositiveIntEnv(
+  process.env.AUTH_API_RATE_LIMIT_WINDOW_MS,
+  15 * 60 * 1000,
+);
+export const AUTH_API_RATE_LIMIT_MAX = parsePositiveIntEnv(
+  process.env.AUTH_API_RATE_LIMIT_MAX,
+  1200,
+);
 
 export function ensureDataDirs(): void {
   for (const dir of [DATA_DIR]) {

@@ -2,8 +2,6 @@ import { Router, type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 
 import {
-  AUTH_API_RATE_LIMIT_MAX,
-  AUTH_API_RATE_LIMIT_WINDOW_MS,
   buildAppCards,
   clearAuthCookies,
   hashPassword,
@@ -13,6 +11,10 @@ import {
   sanitizeNextUrl,
   verifyPassword,
 } from '../auth/service.js';
+import {
+  AUTH_API_RATE_LIMIT_MAX,
+  AUTH_API_RATE_LIMIT_WINDOW_MS,
+} from '../config.js';
 import {
   appendAuditLog,
   db,

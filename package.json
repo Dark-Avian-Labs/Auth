@@ -9,7 +9,7 @@
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
     "typecheck:client": "tsc -p tsconfig.json --noEmit",
     "build": "npm run typecheck && tsc -p tsconfig.server.json && vite build",
-    "start": "node --env-file=.env dist/server/index.js",
+    "start": "node dist/server/index.js",
     "validate": "node run-quality-checks.mjs",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
@@ -23,6 +23,7 @@
     "node": ">=25.0.0"
   },
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.55.1",
     "@fontsource-variable/inter": "^5.2.8",
     "argon2": "^0.44.0",
     "better-sqlite3": "^12.6.2",

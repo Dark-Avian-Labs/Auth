@@ -1,6 +1,12 @@
+import { config as loadEnv } from '@dotenvx/dotenvx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+const envPath = path.join(process.cwd(), '.env');
+if (fs.existsSync(envPath)) {
+  loadEnv({ path: envPath });
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const parentName = path.basename(path.resolve(__dirname, '..'));

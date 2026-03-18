@@ -111,7 +111,7 @@ jobs:
             -o StrictHostKeyChecking=yes \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "$SERVER_USER@$SERVER_HOST" \
-            "cd \"$SERVER_PATH\" && printf 'DOTENV_PRIVATE_KEY_DEVELOPMENT=%s\n' \"\$(printf '%s' '$DOTENV_KEY_B64' | base64 -d)\" > .env.keys && chmod 600 .env.keys && test -f .env.keys || { echo 'ERROR: Failed to create or configure .env.keys on server'; exit 1; }"
+            "cd \"$SERVER_PATH\" && printf 'DOTENV_PRIVATE_KEY_DEVELOPMENT=%s\n' \"\$(printf '%s' '$DOTENV_KEY_B64' | base64 -d)\" > .env.keys && chmod 600 .env.keys && test -s .env.keys || { echo 'ERROR: Failed to create or configure .env.keys on server'; exit 1; }"
 
       - name: Restart PM2
         run: |

@@ -28,7 +28,14 @@ function resolveEnvFilePath(projectRoot: string): string | null {
   return null;
 }
 
-const envPath = resolveEnvFilePath(process.cwd());
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const parentName = path.basename(path.resolve(__dirname, '..'));
+export const PROJECT_ROOT = path.resolve(
+  __dirname,
+  parentName === 'dist' ? '../..' : '..',
+);
+
+const envPath = resolveEnvFilePath(PROJECT_ROOT);
 if (envPath) {
   try {
     loadEnv({ path: envPath });
@@ -39,14 +46,16 @@ if (envPath) {
     );
     throw error;
   }
+} else {
+  console.warn(
+    `[Config] No env file resolved for project root "${PROJECT_ROOT}" (NODE_ENV="${process.env.NODE_ENV ?? ''}").`,
+  );
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[Config] No environment file found in production; expected .env.production.',
+    );
+  }
 }
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const parentName = path.basename(path.resolve(__dirname, '..'));
-export const PROJECT_ROOT = path.resolve(
-  __dirname,
-  parentName === 'dist' ? '../..' : '..',
-);
 
 export const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 export const CENTRAL_DB_PATH =

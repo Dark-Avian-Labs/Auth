@@ -3,8 +3,40 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const envPath = path.join(process.cwd(), '.env');
-if (fs.existsSync(envPath)) {
+function resolveEnvFilePath(projectRoot: string): string | null {
+  const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
+  const envFileByMode: Record<string, string> = {
+    production: '.env.production',
+    development: '.env.development',
+    test: '.env.test',
+  };
+  const isTestMode = normalizedNodeEnv === 'test';
+  const prioritizedFiles = [
+    envFileByMode[normalizedNodeEnv],
+    ...(isTestMode ? [] : ['.env.production']),
+    '.env.development',
+  ].filter((value, index, values): value is string => {
+    return typeof value === 'string' && values.indexOf(value) === index;
+  });
+
+  for (const fileName of prioritizedFiles) {
+    const candidatePath = path.join(projectRoot, fileName);
+    if (fs.existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+  return null;
+}
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const parentName = path.basename(path.resolve(__dirname, '..'));
+export const PROJECT_ROOT = path.resolve(
+  __dirname,
+  parentName === 'dist' ? '../..' : '..',
+);
+
+const envPath = resolveEnvFilePath(PROJECT_ROOT);
+if (envPath) {
   try {
     loadEnv({ path: envPath });
   } catch (error) {
@@ -14,14 +46,17 @@ if (fs.existsSync(envPath)) {
     );
     throw error;
   }
+} else {
+  const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
+  console.warn(
+    `[Config] No env file resolved for project root "${PROJECT_ROOT}" (NODE_ENV="${process.env.NODE_ENV ?? ''}").`,
+  );
+  if (normalizedNodeEnv === 'production') {
+    throw new Error(
+      '[Config] No environment file found in production; expected .env.production.',
+    );
+  }
 }
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const parentName = path.basename(path.resolve(__dirname, '..'));
-export const PROJECT_ROOT = path.resolve(
-  __dirname,
-  parentName === 'dist' ? '../..' : '..',
-);
 
 export const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 export const CENTRAL_DB_PATH =

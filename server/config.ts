@@ -3,8 +3,33 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const envPath = path.join(process.cwd(), '.env');
-if (fs.existsSync(envPath)) {
+function resolveEnvFilePath(projectRoot: string): string | null {
+  const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
+  const envFileByMode: Record<string, string> = {
+    production: '.env.production',
+    development: '.env.development',
+    test: '.env.test',
+  };
+  const isTestMode = normalizedNodeEnv === 'test';
+  const prioritizedFiles = [
+    envFileByMode[normalizedNodeEnv],
+    ...(isTestMode ? [] : ['.env.production']),
+    '.env.development',
+  ].filter((value, index, values): value is string => {
+    return typeof value === 'string' && values.indexOf(value) === index;
+  });
+
+  for (const fileName of prioritizedFiles) {
+    const candidatePath = path.join(projectRoot, fileName);
+    if (fs.existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+  return null;
+}
+
+const envPath = resolveEnvFilePath(process.cwd());
+if (envPath) {
   try {
     loadEnv({ path: envPath });
   } catch (error) {

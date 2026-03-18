@@ -88,6 +88,7 @@ jobs:
           mkdir -p /tmp/deploy
           cp -r dist/ /tmp/deploy/
           cp package*.json /tmp/deploy/
+          if [ -f .env.production ]; then cp .env.production /tmp/deploy/; fi
           if [ -f favicon.ico ]; then cp favicon.ico /tmp/deploy/; fi
           if [ -f feathers.png ]; then cp feathers.png /tmp/deploy/; fi
           if [ -f background.txt ]; then cp background.txt /tmp/deploy/; fi

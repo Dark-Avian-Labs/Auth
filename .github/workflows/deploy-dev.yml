@@ -80,6 +80,10 @@ jobs:
           cp -r dist/ /tmp/deploy/
           cp package*.json /tmp/deploy/
           if [ -f .env.development ]; then cp .env.development /tmp/deploy/; fi
+          cat > /tmp/deploy/.env.keys <<EOF
+          DOTENV_PRIVATE_KEY_DEVELOPMENT=${DOTENV_PRIVATE_KEY_DEVELOPMENT}
+          EOF
+          chmod 600 /tmp/deploy/.env.keys
           if [ -f favicon.ico ]; then cp favicon.ico /tmp/deploy/; fi
           if [ -f feathers.png ]; then cp feathers.png /tmp/deploy/; fi
           if [ -f background.txt ]; then cp background.txt /tmp/deploy/; fi
@@ -92,7 +96,7 @@ jobs:
             STACK_PATH="$(dirname "$SERVER_PATH")"
           fi
 
-          rsync -av --delete \
+          rsync -avp --delete \
           --exclude='.env' \
           --exclude='.env.local' \
           --exclude='logs/' \

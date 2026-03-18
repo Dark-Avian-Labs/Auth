@@ -47,10 +47,11 @@ if (envPath) {
     throw error;
   }
 } else {
+  const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
   console.warn(
     `[Config] No env file resolved for project root "${PROJECT_ROOT}" (NODE_ENV="${process.env.NODE_ENV ?? ''}").`,
   );
-  if (process.env.NODE_ENV === 'production') {
+  if (normalizedNodeEnv === 'production') {
     throw new Error(
       '[Config] No environment file found in production; expected .env.production.',
     );

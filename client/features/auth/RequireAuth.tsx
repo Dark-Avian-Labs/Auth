@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
-import { useAuth } from './AuthContext';
 import { APP_PATHS } from '../../app/paths';
+import { useAuth } from './AuthContext';
 
 const MAX_AUTO_RETRIES = 5;
 const BASE_RETRY_DELAY_MS = 1000;
@@ -42,11 +42,7 @@ export function RequireAuth({ children }: { children: ReactElement }) {
 
   useEffect(() => {
     let timer: number | null = null;
-    if (
-      auth.status === 'rate_limited' &&
-      secondsRemaining === 0 &&
-      retryCount < MAX_AUTO_RETRIES
-    ) {
+    if (auth.status === 'rate_limited' && secondsRemaining === 0 && retryCount < MAX_AUTO_RETRIES) {
       const delayMs = BASE_RETRY_DELAY_MS * 2 ** retryCount;
       timer = window.setTimeout(() => {
         setRetryCount((count) => count + 1);
@@ -76,12 +72,9 @@ export function RequireAuth({ children }: { children: ReactElement }) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="glass-panel max-w-md p-6 text-center">
-          <h1 className="mb-2 text-xl font-semibold text-foreground">
-            Access denied
-          </h1>
-          <p className="mb-4 text-sm text-muted">
-            Your account is authenticated but does not have access to this
-            application.
+          <h1 className="text-foreground mb-2 text-xl font-semibold">Access denied</h1>
+          <p className="text-muted mb-4 text-sm">
+            Your account is authenticated but does not have access to this application.
           </p>
           <button
             className="btn btn-accent"
@@ -101,12 +94,9 @@ export function RequireAuth({ children }: { children: ReactElement }) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="glass-panel max-w-md p-6 text-center">
-          <h1 className="mb-2 text-xl font-semibold text-foreground">
-            Auth check failed
-          </h1>
-          <p className="mb-4 text-sm text-muted">
-            {authErrorMessage ||
-              'We could not verify your session right now. Please try again.'}
+          <h1 className="text-foreground mb-2 text-xl font-semibold">Auth check failed</h1>
+          <p className="text-muted mb-4 text-sm">
+            {authErrorMessage || 'We could not verify your session right now. Please try again.'}
           </p>
           <button
             className="btn btn-accent"
@@ -126,16 +116,11 @@ export function RequireAuth({ children }: { children: ReactElement }) {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="glass-panel max-w-md p-6 text-center">
-          <h1 className="mb-2 text-xl font-semibold text-foreground">
-            Too many requests
-          </h1>
-          <p className="mb-4 text-sm text-muted">
-            Authentication checks are temporarily rate limited. Please wait
-            before trying again.
+          <h1 className="text-foreground mb-2 text-xl font-semibold">Too many requests</h1>
+          <p className="text-muted mb-4 text-sm">
+            Authentication checks are temporarily rate limited. Please wait before trying again.
           </p>
-          <div className="mb-4 text-2xl font-semibold text-warning">
-            {secondsRemaining}s
-          </div>
+          <div className="text-warning mb-4 text-2xl font-semibold">{secondsRemaining}s</div>
           <button
             className="btn btn-accent"
             type="button"

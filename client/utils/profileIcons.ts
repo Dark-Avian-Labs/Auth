@@ -3,9 +3,7 @@ const PROFILE_ICON_MODULES = import.meta.glob('../assets/profile-icons/*.png', {
   import: 'default',
 }) as Record<string, string>;
 
-export const PROFILE_AVATAR_IDS = [
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-] as const;
+export const PROFILE_AVATAR_IDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] as const;
 
 const PROFILE_ICON_BY_ID: Record<number, string> = {};
 

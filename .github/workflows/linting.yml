@@ -1,4 +1,4 @@
-name: Check Linting
+name: Check OxLint
 
 permissions:
   contents: read
@@ -26,5 +26,5 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Lint code
+      - name: Run OxLint
         run: npm run lint

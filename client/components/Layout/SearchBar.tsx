@@ -28,7 +28,7 @@ export function SearchBar({ onSearch }: SearchBarProps) {
       />
       {query && (
         <button
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-lg text-muted hover:text-foreground"
+          className="text-muted hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 text-lg"
           onClick={() => setQuery('')}
           aria-label="Clear search"
           type="button"

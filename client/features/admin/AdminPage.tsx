@@ -43,14 +43,10 @@ export function AdminPage() {
   const [passwordUser, setPasswordUser] = useState<AdminUser | null>(null);
   const [passwordValue, setPasswordValue] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
-  const [permissionsUser, setPermissionsUser] = useState<AdminUser | null>(
-    null,
-  );
+  const [permissionsUser, setPermissionsUser] = useState<AdminUser | null>(null);
   const [permissionsAppId, setPermissionsAppId] = useState<string | null>(null);
   const [permissionsValue, setPermissionsValue] = useState('');
-  const [permissionsValidationError, setPermissionsValidationError] = useState<
-    string | null
-  >(null);
+  const [permissionsValidationError, setPermissionsValidationError] = useState<string | null>(null);
   const [permissionsSubmitting, setPermissionsSubmitting] = useState(false);
   const passwordInputId = 'admin-password-input';
   const permissionsInputId = 'admin-permissions-input';
@@ -65,9 +61,7 @@ export function AdminPage() {
     const focusableSelector =
       'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
 
-    return Array.from(
-      modalElement.querySelectorAll<HTMLElement>(focusableSelector),
-    );
+    return Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));
   };
 
   const getPermissionsModalFocusableElements = () => {
@@ -77,9 +71,7 @@ export function AdminPage() {
     const focusableSelector =
       'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
 
-    return Array.from(
-      modalElement.querySelectorAll<HTMLElement>(focusableSelector),
-    );
+    return Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));
   };
 
   useEffect(() => {
@@ -171,9 +163,7 @@ export function AdminPage() {
       }
     } catch (caught) {
       console.error('Error while refreshing users.', caught);
-      setUsersError(
-        caught instanceof Error ? caught.message : 'Failed to refresh users.',
-      );
+      setUsersError(caught instanceof Error ? caught.message : 'Failed to refresh users.');
     }
   };
 
@@ -239,11 +229,7 @@ export function AdminPage() {
       setMessage('Role updated.');
       await refreshUsers();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Network error updating role.',
-      );
+      setError(caught instanceof Error ? caught.message : 'Network error updating role.');
     }
   };
 
@@ -265,11 +251,7 @@ export function AdminPage() {
       setMessage('User deleted.');
       await refreshUsers();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Network error deleting user.',
-      );
+      setError(caught instanceof Error ? caught.message : 'Network error deleting user.');
     }
   };
 
@@ -313,11 +295,7 @@ export function AdminPage() {
       setMessage('Password updated.');
       closePasswordModal();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Network error updating password.',
-      );
+      setError(caught instanceof Error ? caught.message : 'Network error updating password.');
     }
   };
 
@@ -335,11 +313,7 @@ export function AdminPage() {
     });
   };
 
-  const updateAppAccess = async (
-    user: AdminUser,
-    appId: string,
-    enabled: boolean,
-  ) => {
+  const updateAppAccess = async (user: AdminUser, appId: string, enabled: boolean) => {
     setError(null);
     setMessage(null);
     try {
@@ -363,11 +337,7 @@ export function AdminPage() {
       setMessage('App access updated.');
       await refreshUsers();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Network error updating app access.',
-      );
+      setError(caught instanceof Error ? caught.message : 'Network error updating app access.');
     }
   };
 
@@ -379,9 +349,7 @@ export function AdminPage() {
 
     const parsedPermissions = toPermissionPayload(permissionsValue);
     if (permissionsValue.trim().length > 0 && parsedPermissions.length === 0) {
-      setPermissionsValidationError(
-        'Enter one or more permissions separated by commas.',
-      );
+      setPermissionsValidationError('Enter one or more permissions separated by commas.');
       return;
     }
 
@@ -389,19 +357,16 @@ export function AdminPage() {
     setError(null);
     setMessage(null);
     try {
-      const response = await apiFetch(
-        `/api/admin/users/${user.id}/permissions`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            app_id: appId,
-            permissions: parsedPermissions,
-          }),
+      const response = await apiFetch(`/api/admin/users/${user.id}/permissions`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
         },
-      );
+        body: JSON.stringify({
+          app_id: appId,
+          permissions: parsedPermissions,
+        }),
+      });
       const body = (await response.json().catch(() => null)) as {
         error?: string;
       } | null;
@@ -413,11 +378,7 @@ export function AdminPage() {
       closePermissionsModal();
       await refreshUsers();
     } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Network error updating permissions.',
-      );
+      setError(caught instanceof Error ? caught.message : 'Network error updating permissions.');
     }
   };
 
@@ -430,11 +391,7 @@ export function AdminPage() {
     previousFocusRef.current?.focus();
   };
 
-  const openPermissionsModal = (
-    user: AdminUser,
-    appId: string,
-    trigger?: EventTarget | null,
-  ) => {
+  const openPermissionsModal = (user: AdminUser, appId: string, trigger?: EventTarget | null) => {
     if (trigger instanceof HTMLElement) {
       previousFocusRef.current = trigger;
     } else if (document.activeElement instanceof HTMLElement) {
@@ -466,16 +423,12 @@ export function AdminPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <GlassCard className="p-6">
-        <h1 className="text-2xl font-semibold text-foreground">Admin Panel</h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage users, roles, app access, and permissions.
-        </p>
+        <h1 className="text-foreground text-2xl font-semibold">Admin Panel</h1>
+        <p className="text-muted mt-1 text-sm">Manage users, roles, app access, and permissions.</p>
       </GlassCard>
 
       <GlassCard className="p-6">
-        <h2 className="mb-3 text-lg font-semibold text-foreground">
-          Create User
-        </h2>
+        <h2 className="text-foreground mb-3 text-lg font-semibold">Create User</h2>
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-center">
           <Input
             type="text"
@@ -489,7 +442,7 @@ export function AdminPage() {
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
-          <label className="flex items-center gap-2 text-sm text-muted">
+          <label className="text-muted flex items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={newIsAdmin}
@@ -501,20 +454,16 @@ export function AdminPage() {
             Create
           </Button>
         </div>
-        {message ? (
-          <p className="mt-3 text-sm text-green-400">{message}</p>
-        ) : null}
+        {message ? <p className="mt-3 text-sm text-green-400">{message}</p> : null}
         {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
       </GlassCard>
 
       <GlassCard className="overflow-hidden p-0">
-        {usersError ? (
-          <p className="px-4 pt-4 text-sm text-red-400">{usersError}</p>
-        ) : null}
+        {usersError ? <p className="px-4 pt-4 text-sm text-red-400">{usersError}</p> : null}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="text-left text-muted">
+              <tr className="text-muted text-left">
                 <th className="px-4 py-3">User</th>
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">App Access</th>
@@ -524,7 +473,7 @@ export function AdminPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="px-4 py-3 text-muted" colSpan={4}>
+                  <td className="text-muted px-4 py-3" colSpan={4}>
                     Loading users...
                   </td>
                 </tr>
@@ -532,9 +481,7 @@ export function AdminPage() {
                 users.map((user) => (
                   <tr key={user.id} className="border-t border-white/10">
                     <td className="px-4 py-3">{user.username}</td>
-                    <td className="px-4 py-3">
-                      {user.is_admin ? 'Admin' : 'User'}
-                    </td>
+                    <td className="px-4 py-3">{user.is_admin ? 'Admin' : 'User'}</td>
                     <td className="px-4 py-3">
                       {availableApps.map((appId) => {
                         const hasAccess = user.app_access.includes(appId);
@@ -543,9 +490,7 @@ export function AdminPage() {
                             key={`${user.id}-${appId}`}
                             className="mr-2 rounded border border-white/20 px-2 py-1 text-xs"
                             type="button"
-                            onClick={() =>
-                              updateAppAccess(user, appId, !hasAccess)
-                            }
+                            onClick={() => updateAppAccess(user, appId, !hasAccess)}
                           >
                             {appId}:{hasAccess ? 'on' : 'off'}
                           </button>
@@ -578,9 +523,7 @@ export function AdminPage() {
                           type="button"
                           variant="secondary"
                           className="h-8 px-3 text-xs"
-                          onClick={(event) =>
-                            openPasswordModal(user, event.currentTarget)
-                          }
+                          onClick={(event) => openPasswordModal(user, event.currentTarget)}
                         >
                           Change password
                         </Button>
@@ -589,11 +532,7 @@ export function AdminPage() {
                           variant="secondary"
                           className="h-8 px-3 text-xs"
                           onClick={(event) =>
-                            openPermissionsModal(
-                              user,
-                              'parametric',
-                              event.currentTarget,
-                            )
+                            openPermissionsModal(user, 'parametric', event.currentTarget)
                           }
                         >
                           Param perms
@@ -603,11 +542,7 @@ export function AdminPage() {
                           variant="secondary"
                           className="h-8 px-3 text-xs"
                           onClick={(event) =>
-                            openPermissionsModal(
-                              user,
-                              'corpus',
-                              event.currentTarget,
-                            )
+                            openPermissionsModal(user, 'corpus', event.currentTarget)
                           }
                         >
                           Corpus perms
@@ -667,10 +602,8 @@ export function AdminPage() {
               }
 
               const firstElement = focusableElements[0];
-              const lastElement =
-                focusableElements[focusableElements.length - 1];
-              const activeElement =
-                document.activeElement as HTMLElement | null;
+              const lastElement = focusableElements[focusableElements.length - 1];
+              const activeElement = document.activeElement as HTMLElement | null;
               const modalElement = passwordModalRef.current;
 
               if (event.shiftKey) {
@@ -696,16 +629,10 @@ export function AdminPage() {
             }}
           >
             <GlassCard className="p-6">
-              <h2
-                id="admin-password-title"
-                className="text-lg font-semibold text-foreground"
-              >
+              <h2 id="admin-password-title" className="text-foreground text-lg font-semibold">
                 Change password for {passwordUser.username}
               </h2>
-              <label
-                htmlFor={passwordInputId}
-                className="mt-3 block text-sm text-muted"
-              >
+              <label htmlFor={passwordInputId} className="text-muted mt-3 block text-sm">
                 New password
               </label>
               <input
@@ -753,10 +680,7 @@ export function AdminPage() {
           aria-modal="true"
           aria-labelledby="admin-permissions-title"
           onClick={(event) => {
-            if (
-              event.target === event.currentTarget &&
-              !permissionsSubmitting
-            ) {
+            if (event.target === event.currentTarget && !permissionsSubmitting) {
               closePermissionsModal();
             }
           }}
@@ -784,10 +708,8 @@ export function AdminPage() {
               }
 
               const firstElement = focusableElements[0];
-              const lastElement =
-                focusableElements[focusableElements.length - 1];
-              const activeElement =
-                document.activeElement as HTMLElement | null;
+              const lastElement = focusableElements[focusableElements.length - 1];
+              const activeElement = document.activeElement as HTMLElement | null;
               const modalElement = permissionsModalRef.current;
 
               if (event.shiftKey) {
@@ -813,16 +735,10 @@ export function AdminPage() {
             }}
           >
             <GlassCard className="p-6">
-              <h2
-                id="admin-permissions-title"
-                className="text-lg font-semibold text-foreground"
-              >
+              <h2 id="admin-permissions-title" className="text-foreground text-lg font-semibold">
                 Permissions for {permissionsUser.username} on {permissionsAppId}
               </h2>
-              <label
-                htmlFor={permissionsInputId}
-                className="mt-3 block text-sm text-muted"
-              >
+              <label htmlFor={permissionsInputId} className="text-muted mt-3 block text-sm">
                 Comma-separated permissions
               </label>
               <Input
@@ -846,9 +762,7 @@ export function AdminPage() {
                 placeholder="read,write"
               />
               {permissionsValidationError ? (
-                <p className="mt-2 text-sm text-red-400">
-                  {permissionsValidationError}
-                </p>
+                <p className="mt-2 text-sm text-red-400">{permissionsValidationError}</p>
               ) : null}
               <div className="mt-4 flex justify-end gap-2">
                 <Button

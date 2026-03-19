@@ -9,17 +9,9 @@ import {
   AUTH_PUBLIC_BASE_URL,
   SECURE_COOKIES,
 } from '../config.js';
-import {
-  db,
-  getGamesForUser,
-  getUserById,
-  type UserRow,
-} from '../db/authDb.js';
+import { db, getGamesForUser, getUserById, type UserRow } from '../db/authDb.js';
 
-export const APP_META_BY_ID: Record<
-  string,
-  { label: string; subtitle: string }
-> = {
+export const APP_META_BY_ID: Record<string, { label: string; subtitle: string }> = {
   parametric: {
     label: 'Parametric',
     subtitle: 'Build planning and management',
@@ -46,10 +38,7 @@ function isAllowedOrigin(url: URL, allowlist: string[]): boolean {
   return allowlist.includes(url.origin);
 }
 
-export function sanitizeNextUrl(
-  input: string | undefined,
-  fallbackPath: string,
-): string {
+export function sanitizeNextUrl(input: string | undefined, fallbackPath: string): string {
   const fallback = new URL(fallbackPath, AUTH_PUBLIC_BASE_URL).toString();
   if (!input || input.length < 1) {
     return fallback;
@@ -67,10 +56,7 @@ export function sanitizeNextUrl(
   return parsed.toString();
 }
 
-export async function verifyPassword(
-  password: string,
-  hash: string,
-): Promise<boolean> {
+export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   try {
     return await argon2.verify(hash, password);
   } catch {

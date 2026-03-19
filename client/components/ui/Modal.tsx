@@ -8,13 +8,7 @@ interface ModalProps {
   ariaLabelledBy?: string;
 }
 
-export function Modal({
-  open,
-  onClose,
-  children,
-  className,
-  ariaLabelledBy,
-}: ModalProps) {
+export function Modal({ open, onClose, children, className, ariaLabelledBy }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
 

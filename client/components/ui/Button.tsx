@@ -27,16 +27,12 @@ interface BaseProps {
 }
 
 interface ButtonProps
-  extends
-    Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'>,
-    BaseProps {
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'>, BaseProps {
   href?: never;
 }
 
 interface LinkButtonProps
-  extends
-    Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'>,
-    BaseProps {
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'>, BaseProps {
   href: string;
 }
 

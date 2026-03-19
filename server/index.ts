@@ -1,11 +1,12 @@
+import { createRequire } from 'module';
+import path from 'path';
+
 import cookieParser from 'cookie-parser';
 import { csrfSync } from 'csrf-sync';
 import express, { type Request, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import helmet from 'helmet';
-import { createRequire } from 'module';
-import path from 'path';
 
 import { requireAdmin, sanitizeNextUrl } from './auth/service.js';
 import {
@@ -36,9 +37,7 @@ console.log(`[${APP_NAME}] Central DB ready`);
 const app = express();
 if (TRUST_PROXY) app.set('trust proxy', 1);
 if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
-  throw new Error(
-    'TRUST_PROXY must be enabled in production with secure cookies.',
-  );
+  throw new Error('TRUST_PROXY must be enabled in production with secure cookies.');
 }
 
 app.use(helmet());
@@ -54,9 +53,7 @@ const baselineLimiter = rateLimit({
   skip: (req) =>
     req.path === '/healthz' ||
     req.path === '/favicon.ico' ||
-    /^\/assets\/.+\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(
-      req.path,
-    ),
+    /^\/assets\/.+\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(req.path),
 });
 app.use(baselineLimiter);
 
@@ -115,24 +112,14 @@ app.use((req, res, next) => {
   next();
 });
 
-function corsAllowlist(
-  req: Request,
-  res: Response,
-  next: express.NextFunction,
-): void {
+function corsAllowlist(req: Request, res: Response, next: express.NextFunction): void {
   const origin = req.headers.origin;
   if (typeof origin === 'string' && ALLOWED_APP_ORIGINS.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader(
-      'Access-Control-Allow-Headers',
-      'Content-Type, X-CSRF-Token, X-XSRF-Token',
-    );
-    res.setHeader(
-      'Access-Control-Allow-Methods',
-      'GET,POST,PATCH,PUT,DELETE,OPTIONS',
-    );
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-CSRF-Token, X-XSRF-Token');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,PUT,DELETE,OPTIONS');
   }
   if (req.method === 'OPTIONS') {
     res.status(204).end();
@@ -150,18 +137,14 @@ app.use('/api/admin', adminApiRouter);
 
 app.post('/logout', (req, res) => {
   const fetchSiteHeader = req.headers['sec-fetch-site'];
-  const fetchSite = Array.isArray(fetchSiteHeader)
-    ? fetchSiteHeader[0]
-    : fetchSiteHeader;
+  const fetchSite = Array.isArray(fetchSiteHeader) ? fetchSiteHeader[0] : fetchSiteHeader;
   if (fetchSite === 'cross-site') {
     res.status(403).json({ error: 'Cross-site logout is not allowed.' });
     return;
   }
 
   const nextInput =
-    typeof req.query.next === 'string' && req.query.next.length > 0
-      ? req.query.next
-      : '';
+    typeof req.query.next === 'string' && req.query.next.length > 0 ? req.query.next : '';
   const next = sanitizeNextUrl(nextInput, '/login');
   req.session.destroy((err) => {
     if (err) {
@@ -224,11 +207,7 @@ app.use(
 );
 app.use(publicPageLimiter, express.static(clientDir, { maxAge: '1h' }));
 
-function ensureAuthenticatedPage(
-  req: Request,
-  res: Response,
-  next: express.NextFunction,
-): void {
+function ensureAuthenticatedPage(req: Request, res: Response, next: express.NextFunction): void {
   if (typeof req.session.user_id === 'number' && req.session.user_id > 0) {
     next();
     return;
@@ -256,33 +235,29 @@ app.get('/', publicPageLimiter, ensureAuthenticatedPage, (_req, res) => {
   res.sendFile(clientIndexPath);
 });
 
-app.use(
-  (err: unknown, _req: Request, res: Response, _next: express.NextFunction) => {
-    const error = err as Partial<Error> & {
-      status?: number;
-      statusCode?: number;
-    };
-    console.error('[Error]', error.stack ?? error.message);
-    const status =
-      typeof error.status === 'number'
-        ? error.status
-        : typeof error.statusCode === 'number'
-          ? error.statusCode
-          : error.name === 'ForbiddenError'
-            ? 403
-            : 500;
-    const safeMessage =
-      NODE_ENV === 'production' && status >= 500
-        ? 'Internal server error'
-        : (error.message ?? 'Internal server error');
-    res.status(status).json({ error: safeMessage });
-  },
-);
+app.use((err: unknown, _req: Request, res: Response, _next: express.NextFunction) => {
+  const error = err as Partial<Error> & {
+    status?: number;
+    statusCode?: number;
+  };
+  console.error('[Error]', error.stack ?? error.message);
+  const status =
+    typeof error.status === 'number'
+      ? error.status
+      : typeof error.statusCode === 'number'
+        ? error.statusCode
+        : error.name === 'ForbiddenError'
+          ? 403
+          : 500;
+  const safeMessage =
+    NODE_ENV === 'production' && status >= 500
+      ? 'Internal server error'
+      : (error.message ?? 'Internal server error');
+  res.status(status).json({ error: safeMessage });
+});
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(
-    `[${APP_NAME}] Server running on http://${HOST}:${PORT} (${NODE_ENV})`,
-  );
+  console.log(`[${APP_NAME}] Server running on http://${HOST}:${PORT} (${NODE_ENV})`);
 });
 
 const SHUTDOWN_TIMEOUT_MS = 10_000;

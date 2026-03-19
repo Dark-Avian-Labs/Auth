@@ -9,14 +9,14 @@ Auth is the shared authentication and authorization service used by Parametric a
 ## Requirements
 
 - Node.js 25+
-- npm
+- pnpm 10+ (see `package.json` `packageManager`; enable via `corepack enable`)
 
 ## Setup
 
 1. Install dependencies:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 2. Copy env file:
@@ -28,8 +28,8 @@ Auth is the shared authentication and authorization service used by Parametric a
 3. Build and run:
 
    ```bash
-   npm run build
-   npm start
+   pnpm run build
+   pnpm start
    ```
 
 ## dotenvx and encrypted env files
@@ -67,7 +67,7 @@ If you have never used dotenvx before, use this flow:
 2. Encrypt your local `.env` into `.env.vault`:
 
    ```bash
-   npx dotenvx encrypt -f .env
+   pnpm dlx dotenvx encrypt -f .env
    ```
 
    This creates/updates:
@@ -78,7 +78,7 @@ If you have never used dotenvx before, use this flow:
    - `DOTENV_KEY_DEV`
    - `DOTENV_KEY_PROD`
 
-4. Keep using normal app scripts locally (`npm start`, `npm run validate`).
+4. Keep using normal app scripts locally (`pnpm start`, `pnpm run validate`).
    The server already loads local `.env` automatically via dotenvx.
 
 ## Environment
@@ -97,13 +97,13 @@ If you have never used dotenvx before, use this flow:
 
 ## Scripts
 
-| Script                    | Description                             |
-| ------------------------- | --------------------------------------- |
-| `npm run build`           | Compile TypeScript to `dist/`.          |
-| `npm start`               | Run production server from `dist/`.     |
-| `npm run bootstrap:admin` | Build and bootstrap initial admin user. |
-| `npm run lint`            | Run ESLint.                             |
-| `npm run format`          | Run Prettier formatting.                |
+| Script                     | Description                             |
+| -------------------------- | --------------------------------------- |
+| `pnpm run build`           | Compile TypeScript to `dist/`.          |
+| `pnpm start`               | Run production server from `dist/`.     |
+| `pnpm run bootstrap:admin` | Build and bootstrap initial admin user. |
+| `pnpm run lint`            | Run OxLint.                             |
+| `pnpm run format`          | Run Oxfmt formatting.                   |
 
 ## License
 

@@ -97,13 +97,12 @@ If you have never used dotenvx before, use this flow:
 
 ## Scripts
 
-| Script                     | Description                             |
-| -------------------------- | --------------------------------------- |
-| `pnpm run build`           | Compile TypeScript to `dist/`.          |
-| `pnpm start`               | Run production server from `dist/`.     |
-| `pnpm run bootstrap:admin` | Build and bootstrap initial admin user. |
-| `pnpm run lint`            | Run OxLint.                             |
-| `pnpm run format`          | Run Oxfmt formatting.                   |
+| Script            | Description                         |
+| ----------------- | ----------------------------------- |
+| `pnpm run build`  | Compile TypeScript to `dist/`.      |
+| `pnpm start`      | Run production server from `dist/`. |
+| `pnpm run lint`   | Run OxLint.                         |
+| `pnpm run format` | Run Oxfmt formatting.               |
 
 ## License
 

@@ -7,7 +7,7 @@
   "scripts": {
     "typecheck": "npm run typecheck:server && npm run typecheck:client",
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
-    "typecheck:client": "tsc -p tsconfig.json --noEmit",
+    "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
     "build": "npm run typecheck && tsc -p tsconfig.server.json && vite build",
     "start": "node dist/server/index.js",
     "validate": "node run-quality-checks.mjs",

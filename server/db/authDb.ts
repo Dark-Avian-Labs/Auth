@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-import Database from 'better-sqlite3';
+import Database, { type Database as DatabaseType } from 'better-sqlite3';
 
 import { CENTRAL_DB_PATH } from '../config.js';
 
@@ -9,7 +9,7 @@ if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
   fs.mkdirSync(path.dirname(CENTRAL_DB_PATH), { recursive: true });
 }
 
-export const db = new Database(CENTRAL_DB_PATH);
+export const db: DatabaseType = new Database(CENTRAL_DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 

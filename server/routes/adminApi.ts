@@ -197,36 +197,40 @@ adminApiRouter.patch('/users/:id', async (req: Request, res: Response, next: Nex
   }
 });
 
-adminApiRouter.delete('/users/:id', (req: Request, res: Response) => {
-  const userId = parseInt(String(req.params.id), 10);
-  if (!Number.isInteger(userId) || userId <= 0) {
-    res.status(400).json({ error: 'Invalid user id' });
-    return;
-  }
-  if (req.session.user_id === userId) {
-    res.status(400).json({ error: 'Cannot delete your own account' });
-    return;
-  }
-  const deleteUserWithSideEffects = db.transaction(() => {
-    const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
-    if (result.changes < 1) {
-      return false;
+adminApiRouter.delete('/users/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const userId = parseInt(String(req.params.id), 10);
+    if (!Number.isInteger(userId) || userId <= 0) {
+      res.status(400).json({ error: 'Invalid user id' });
+      return;
     }
-    revokeSessionsForUser(userId);
-    return true;
-  });
-  if (!deleteUserWithSideEffects()) {
-    res.status(404).json({ error: 'User not found' });
-    return;
+    if (req.session.user_id === userId) {
+      res.status(400).json({ error: 'Cannot delete your own account' });
+      return;
+    }
+    const deleteUserWithSideEffects = db.transaction(() => {
+      const result = db.prepare('DELETE FROM users WHERE id = ?').run(userId);
+      if (result.changes < 1) {
+        return false;
+      }
+      revokeSessionsForUser(userId);
+      return true;
+    });
+    if (!deleteUserWithSideEffects()) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    appendAuditLog({
+      actorUserId: req.session.user_id!,
+      eventType: 'admin.user.delete',
+      targetType: 'user',
+      targetId: String(userId),
+      ip: requestIp(req),
+    });
+    res.json({ success: true });
+  } catch (error) {
+    next(error);
   }
-  appendAuditLog({
-    actorUserId: req.session.user_id!,
-    eventType: 'admin.user.delete',
-    targetType: 'user',
-    targetId: String(userId),
-    ip: requestIp(req),
-  });
-  res.json({ success: true });
 });
 
 adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {

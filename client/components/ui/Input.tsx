@@ -16,12 +16,5 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   if (className) {
     classes.push(className);
   }
-  return (
-    <input
-      {...props}
-      ref={ref}
-      readOnly={props.readOnly}
-      className={classes.join(' ')}
-    />
-  );
+  return <input {...props} ref={ref} readOnly={props.readOnly} className={classes.join(' ')} />;
 });

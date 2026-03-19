@@ -7,10 +7,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { apiFetch } from '../../utils/api';
-import {
-  getProfileIconSrc,
-  PROFILE_AVATAR_IDS,
-} from '../../utils/profileIcons';
+import { getProfileIconSrc, PROFILE_AVATAR_IDS } from '../../utils/profileIcons';
 import { useAuth } from '../auth/AuthContext';
 
 export function ProfilePage() {
@@ -49,10 +46,7 @@ export function ProfilePage() {
       if (url.protocol !== 'http:' && url.protocol !== 'https:') {
         return null;
       }
-      const allowedOrigins = new Set([
-        window.location.origin,
-        ...ALLOWED_NEXT_ORIGINS,
-      ]);
+      const allowedOrigins = new Set([window.location.origin, ...ALLOWED_NEXT_ORIGINS]);
       if (!allowedOrigins.has(url.origin)) {
         return null;
       }
@@ -68,18 +62,14 @@ export function ProfilePage() {
     setDisplayName(profile.display_name ?? '');
     setEmail(profile.email ?? '');
     const avatarId = Number(profile.avatar);
-    setAvatar(
-      Number.isInteger(avatarId) && avatarId >= 1 && avatarId <= 16
-        ? avatarId
-        : 1,
-    );
+    setAvatar(Number.isInteger(avatarId) && avatarId >= 1 && avatarId <= 16 ? avatarId : 1);
   }, [profile]);
 
   if (!profile) {
     return (
       <div className="mx-auto max-w-4xl">
         <GlassCard className="p-6">
-          <p className="text-sm text-muted">Unable to load profile data.</p>
+          <p className="text-muted text-sm">Unable to load profile data.</p>
         </GlassCard>
       </div>
     );
@@ -173,8 +163,8 @@ export function ProfilePage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <GlassCard className="p-6">
-        <h1 className="text-2xl font-semibold text-foreground">Profile</h1>
-        <p className="mt-1 text-sm text-muted">
+        <h1 className="text-foreground text-2xl font-semibold">Profile</h1>
+        <p className="text-muted mt-1 text-sm">
           Manage your account profile centrally for all apps.
         </p>
         {nextTarget ? (
@@ -187,9 +177,7 @@ export function ProfilePage() {
       </GlassCard>
 
       <GlassCard className="p-6">
-        <h2 className="mb-3 text-lg font-semibold text-foreground">
-          Profile Icon
-        </h2>
+        <h2 className="text-foreground mb-3 text-lg font-semibold">Profile Icon</h2>
         <div className="profile-icon-grid">
           {PROFILE_AVATAR_IDS.map((id) => (
             <button
@@ -202,11 +190,7 @@ export function ProfilePage() {
               }}
               aria-label={`Select profile icon ${id}`}
             >
-              <img
-                src={getProfileIconSrc(id)}
-                alt=""
-                className="profile-icon-option__image"
-              />
+              <img src={getProfileIconSrc(id)} alt="" className="profile-icon-option__image" />
             </button>
           ))}
         </div>
@@ -215,10 +199,7 @@ export function ProfilePage() {
       <GlassCard className="p-6">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label
-              htmlFor="profile-username"
-              className="mb-1.5 block text-sm text-muted"
-            >
+            <label htmlFor="profile-username" className="text-muted mb-1.5 block text-sm">
               Username
             </label>
             <Input
@@ -230,10 +211,7 @@ export function ProfilePage() {
             />
           </div>
           <div>
-            <label
-              htmlFor="profile-role"
-              className="mb-1.5 block text-sm text-muted"
-            >
+            <label htmlFor="profile-role" className="text-muted mb-1.5 block text-sm">
               Role
             </label>
             <Input
@@ -245,10 +223,7 @@ export function ProfilePage() {
             />
           </div>
           <div>
-            <label
-              htmlFor="profile-name"
-              className="mb-1.5 block text-sm text-muted"
-            >
+            <label htmlFor="profile-name" className="text-muted mb-1.5 block text-sm">
               Name
             </label>
             <Input
@@ -263,10 +238,7 @@ export function ProfilePage() {
             />
           </div>
           <div>
-            <label
-              htmlFor="profile-email"
-              className="mb-1.5 block text-sm text-muted"
-            >
+            <label htmlFor="profile-email" className="text-muted mb-1.5 block text-sm">
               Email
             </label>
             <Input
@@ -293,12 +265,7 @@ export function ProfilePage() {
           >
             Change Password
           </Button>
-          <Button
-            type="button"
-            variant="accent"
-            onClick={handleSave}
-            disabled={saving}
-          >
+          <Button type="button" variant="accent" onClick={handleSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </Button>
         </div>
@@ -319,9 +286,7 @@ export function ProfilePage() {
           setPasswordStatus(null);
         }}
       >
-        <h3 className="mb-3 text-lg font-semibold text-foreground">
-          Change Password
-        </h3>
+        <h3 className="text-foreground mb-3 text-lg font-semibold">Change Password</h3>
         <div className="space-y-3">
           <Input
             type="password"

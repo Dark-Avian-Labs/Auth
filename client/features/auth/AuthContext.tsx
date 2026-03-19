@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { AppSummary, AuthState, RemoteAuthState } from './types';
 import { apiFetch, clearCsrfToken } from '../../utils/api';
+import type { AppSummary, AuthState, RemoteAuthState } from './types';
 
 interface AuthContextValue {
   auth: AuthState;
@@ -110,15 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }));
         return;
       }
-      const apps = Array.isArray(body.apps)
-        ? body.apps.filter(isAppSummary)
-        : [];
+      const apps = Array.isArray(body.apps) ? body.apps.filter(isAppSummary) : [];
       setAuth({ status: 'ok', user: body.user, apps });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message || error.toString()
-          : String(error);
+      const message = error instanceof Error ? error.message || error.toString() : String(error);
       setAuth({
         status: 'error',
         user: null,

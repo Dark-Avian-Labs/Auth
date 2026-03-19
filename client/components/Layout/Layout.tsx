@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 
-import { SearchBar } from './SearchBar';
 import bgArt from '../../../background.txt?raw';
 import feathers from '../../../feathers.png';
 import {
@@ -15,6 +14,7 @@ import { Menu } from '../../components/ui/Menu';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getProfileIconSrc } from '../../utils/profileIcons';
+import { SearchBar } from './SearchBar';
 
 export function Layout() {
   const { mode, toggleMode } = useTheme();
@@ -79,15 +79,14 @@ export function Layout() {
   const isLoggedIn = auth.status === 'ok' && auth.user !== null;
   const isAdmin = auth.user?.is_admin === true;
   const rawAvatarId = Number(auth.user?.avatar);
-  const avatarId =
-    Number.isFinite(rawAvatarId) && rawAvatarId !== 0 ? rawAvatarId : 1;
+  const avatarId = Number.isFinite(rawAvatarId) && rawAvatarId !== 0 ? rawAvatarId : 1;
   const avatarSrc = getProfileIconSrc(avatarId);
 
   return (
     <div className="flex min-h-screen flex-col">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-black focus:px-3 focus:py-2 focus:text-white"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:rounded-md focus:bg-black focus:px-3 focus:py-2 focus:text-white"
       >
         Skip to main content
       </a>
@@ -97,11 +96,7 @@ export function Layout() {
       <header className="relative z-30 h-[100px] px-6">
         <div className="mx-auto grid h-full w-full max-w-[1900px] grid-cols-[1fr_auto_1fr] items-center gap-4">
           <Link to={APP_PATHS.home} className="brand-lockup w-fit">
-            <img
-              src={feathers}
-              alt="Dark Avian Labs feather mark"
-              className="brand-lockup__icon"
-            />
+            <img src={feathers} alt="Dark Avian Labs feather mark" className="brand-lockup__icon" />
             <span
               className={`brand-lockup__title brand-lockup--fx ${mode === 'light' ? 'brand-lockup--light' : ''}`}
             >
@@ -115,9 +110,7 @@ export function Layout() {
             </span>
           </Link>
 
-          <div className="justify-self-center">
-            {isLoggedIn ? <SearchBar /> : null}
-          </div>
+          <div className="justify-self-center">{isLoggedIn ? <SearchBar /> : null}</div>
 
           <div className="flex flex-wrap items-center justify-end gap-3">
             <button
@@ -141,11 +134,7 @@ export function Layout() {
                 onClick={() => setMenuOpen((prev) => !prev)}
               >
                 {isLoggedIn ? (
-                  <img
-                    src={avatarSrc}
-                    alt=""
-                    className="profile-avatar-image"
-                  />
+                  <img src={avatarSrc} alt="" className="profile-avatar-image" />
                 ) : (
                   <span aria-hidden="true" className="text-xs font-semibold">
                     🔐
@@ -231,7 +220,7 @@ export function Layout() {
         <div className="mx-auto w-full max-w-[1900px] text-center">
           <a
             href={LEGAL_PAGE_URL}
-            className="text-sm text-muted hover:text-foreground"
+            className="text-muted hover:text-foreground text-sm"
             target={LEGAL_PAGE_URL.startsWith('http') ? '_blank' : undefined}
             rel={LEGAL_PAGE_URL.startsWith('http') ? 'noreferrer' : undefined}
           >

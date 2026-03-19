@@ -49,7 +49,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Lint
+      - name: Run OxLint
         run: npm run lint
 
       - name: Run tests

@@ -2,6 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": true,
+    "tsBuildInfoFile": "./node_modules/.cache/tsc/tsconfig.server.tsbuildinfo",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "outDir": "dist/server",

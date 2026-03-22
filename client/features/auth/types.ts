@@ -6,13 +6,18 @@ export type AuthStatus =
   | 'ok'
   | 'error';
 
+// Avatar representation:
+// - number: backend avatar identifier (e.g., image ID)
+// - string: URL or path to the avatar image
+export type Avatar = number | string;
+
 export interface RemoteAuthUser {
   id: number;
   username: string;
   is_admin: boolean;
   display_name?: string;
   email?: string;
-  avatar?: number | string;
+  avatar?: Avatar;
 }
 
 export interface AppSummary {

@@ -6,9 +6,6 @@ export type AuthStatus =
   | 'ok'
   | 'error';
 
-// Avatar representation:
-// - number: backend avatar identifier (e.g., image ID)
-// - string: URL or path to the avatar image
 export type Avatar = number | string;
 
 export interface RemoteAuthUser {

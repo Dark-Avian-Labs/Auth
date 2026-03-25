@@ -17,10 +17,7 @@ describe('sanitizeNextUrl', () => {
   });
 
   it('returns the exact fallback when sanitizeNextUrl receives null at runtime', () => {
-    const value = sanitizeNextUrl(
-      null as unknown as string | undefined,
-      '/login',
-    );
+    const value = sanitizeNextUrl(null as unknown as string | undefined, '/login');
     expect(value).toBe(fallback);
   });
 
@@ -50,10 +47,7 @@ describe('sanitizeNextUrl', () => {
   });
 
   it('returns the exact fallback when sanitizeNextUrl receives a data URL', () => {
-    const value = sanitizeNextUrl(
-      'data:text/html,<script>alert(1)</script>',
-      '/login',
-    );
+    const value = sanitizeNextUrl('data:text/html,<script>alert(1)</script>', '/login');
     expect(value).toBe(fallback);
   });
 
@@ -75,19 +69,13 @@ describe('sanitizeNextUrl', () => {
   });
 
   it('preserves query parameters when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
-    const expected = new URL(
-      '/dashboard?tab=settings',
-      AUTH_PUBLIC_BASE_URL,
-    ).toString();
+    const expected = new URL('/dashboard?tab=settings', AUTH_PUBLIC_BASE_URL).toString();
     const value = sanitizeNextUrl('/dashboard?tab=settings', '/login');
     expect(value).toBe(expected);
   });
 
   it('preserves fragments when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
-    const expected = new URL(
-      '/dashboard#section',
-      AUTH_PUBLIC_BASE_URL,
-    ).toString();
+    const expected = new URL('/dashboard#section', AUTH_PUBLIC_BASE_URL).toString();
     const value = sanitizeNextUrl('/dashboard#section', '/login');
     expect(value).toBe(expected);
   });

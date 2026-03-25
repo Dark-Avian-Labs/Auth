@@ -8,8 +8,8 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { AppSummary, AuthState, RemoteAuthState } from './types';
 import { apiFetch, clearCsrfToken } from '../../utils/api';
+import type { AppSummary, AuthState, RemoteAuthState } from './types';
 
 interface AuthContextValue {
   auth: AuthState;
@@ -29,6 +29,22 @@ const DEFAULT_AUTH_STATE: AuthState = {
   user: null,
   apps: [],
 };
+
+function getRetryAfterMs(response: Response): number | null {
+  const header = response.headers.get('Retry-After');
+  if (header) {
+    const asSeconds = Number.parseInt(header, 10);
+    if (Number.isFinite(asSeconds) && asSeconds > 0) {
+      return asSeconds * 1000;
+    }
+    const asDate = Date.parse(header);
+    if (Number.isFinite(asDate)) {
+      const delta = asDate - Date.now();
+      if (delta > 0) return delta;
+    }
+  }
+  return null;
+}
 
 function isSafeRelativePath(next: string): boolean {
   return (
@@ -59,7 +75,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await fetch('/api/auth/me');
       if (!response.ok) {
-        setAuth({ status: 'unauthenticated', user: null, apps: [] });
+        if (response.status === 429) {
+          const retryAfterMs = getRetryAfterMs(response) ?? 30000;
+          setAuth({
+            status: 'rate_limited',
+            user: null,
+            apps: [],
+            rateLimitedUntilMs: Date.now() + retryAfterMs,
+          });
+          return;
+        }
+        if (response.status === 401) {
+          setAuth({ status: 'unauthenticated', user: null, apps: [] });
+          return;
+        }
+        setAuth({
+          status: 'error',
+          user: null,
+          apps: [],
+          error: { message: `Auth check failed (${response.status})` },
+        });
         return;
       }
       const body = (await response.json()) as RemoteAuthState;
@@ -67,12 +102,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setAuth({ status: 'unauthenticated', user: null, apps: [] });
         return;
       }
-      const apps = Array.isArray(body.apps)
-        ? body.apps.filter(isAppSummary)
-        : [];
+      if (body.has_game_access === false) {
+        setAuth((prev) => ({
+          status: 'forbidden',
+          user: body.user ?? prev.user,
+          apps: [],
+        }));
+        return;
+      }
+      const apps = Array.isArray(body.apps) ? body.apps.filter(isAppSummary) : [];
       setAuth({ status: 'ok', user: body.user, apps });
-    } catch {
-      setAuth({ status: 'unauthenticated', user: null, apps: [] });
+    } catch (error) {
+      const message = error instanceof Error ? error.message || error.toString() : String(error);
+      setAuth({
+        status: 'error',
+        user: null,
+        apps: [],
+        error: { message },
+      });
     }
   }, []);
 

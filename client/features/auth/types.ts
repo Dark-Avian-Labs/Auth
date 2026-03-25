@@ -1,4 +1,12 @@
-export type AuthStatus = 'loading' | 'unauthenticated' | 'ok' | 'error';
+export type AuthStatus =
+  | 'loading'
+  | 'unauthenticated'
+  | 'forbidden'
+  | 'rate_limited'
+  | 'ok'
+  | 'error';
+
+export type Avatar = number | string;
 
 export interface RemoteAuthUser {
   id: number;
@@ -6,7 +14,7 @@ export interface RemoteAuthUser {
   is_admin: boolean;
   display_name?: string;
   email?: string;
-  avatar?: number | string;
+  avatar?: Avatar;
 }
 
 export interface AppSummary {
@@ -28,4 +36,6 @@ export interface AuthState {
   status: AuthStatus;
   user: RemoteAuthUser | null;
   apps: AppSummary[];
+  rateLimitedUntilMs?: number;
+  error?: { message: string };
 }

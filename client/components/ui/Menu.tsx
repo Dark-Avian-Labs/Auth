@@ -7,9 +7,5 @@ interface MenuProps {
 }
 
 export function Menu({ children, className }: MenuProps) {
-  return (
-    <div className={clsx('user-menu', 'glass-surface', className)}>
-      {children}
-    </div>
-  );
+  return <div className={clsx('user-menu', 'glass-surface', className)}>{children}</div>;
 }

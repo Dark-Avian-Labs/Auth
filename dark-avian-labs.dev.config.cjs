@@ -25,7 +25,7 @@ module.exports = {
       listen_timeout: 10000,
       kill_timeout: 5000,
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: '4000',
       },
     },
@@ -50,7 +50,7 @@ module.exports = {
       listen_timeout: 10000,
       kill_timeout: 5000,
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: '4001',
       },
     },
@@ -75,7 +75,7 @@ module.exports = {
       listen_timeout: 10000,
       kill_timeout: 5000,
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: 'development',
         PORT: '4002',
       },
     },

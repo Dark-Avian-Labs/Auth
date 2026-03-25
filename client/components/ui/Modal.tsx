@@ -8,13 +8,7 @@ interface ModalProps {
   ariaLabelledBy?: string;
 }
 
-export function Modal({
-  open,
-  onClose,
-  children,
-  className,
-  ariaLabelledBy,
-}: ModalProps) {
+export function Modal({ open, onClose, children, className, ariaLabelledBy }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
 
@@ -34,7 +28,7 @@ export function Modal({
     }
 
     const focusableSelector =
-      'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+      'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
 
     const getFocusableElements = () =>
       Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));

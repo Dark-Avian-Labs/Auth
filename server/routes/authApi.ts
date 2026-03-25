@@ -11,6 +11,7 @@ import {
   sanitizeNextUrl,
   verifyPassword,
 } from '../auth/service.js';
+import { AUTH_API_RATE_LIMIT_MAX, AUTH_API_RATE_LIMIT_WINDOW_MS } from '../config.js';
 import {
   appendAuditLog,
   db,
@@ -28,8 +29,8 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
   const authRouter = Router();
 
   const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 120,
+    windowMs: AUTH_API_RATE_LIMIT_WINDOW_MS,
+    max: AUTH_API_RATE_LIMIT_MAX,
     standardHeaders: true,
     legacyHeaders: false,
   });
@@ -67,12 +68,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
   };
 
   const sanitizePlainText = (input: string, maxLength: number): string => {
-    const normalized = input
-      .normalize('NFKC')
-      .split('\r')
-      .join('')
-      .split('\n')
-      .join('');
+    const normalized = input.normalize('NFKC').split('\r').join('').split('\n').join('');
     const safe = removeControlChars(normalized).replace(/[<>]/g, '').trim();
     return safe.slice(0, maxLength);
   };
@@ -90,94 +86,87 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
     res.json({ csrfToken: csrfToken(req) });
   });
 
-  authRouter.post(
-    '/login',
-    loginLimiter,
-    async (req: Request, res: Response) => {
-      const username = String(req.body?.username ?? '').trim();
-      const password = String(req.body?.password ?? '');
-      const nextInput =
-        typeof req.body?.next === 'string' && req.body.next.length > 0
-          ? req.body.next
-          : '';
-      const next = sanitizeNextUrl(nextInput, '/');
+  authRouter.post('/login', loginLimiter, async (req: Request, res: Response) => {
+    const username = String(req.body?.username ?? '').trim();
+    const password = String(req.body?.password ?? '');
+    const nextInput =
+      typeof req.body?.next === 'string' && req.body.next.length > 0 ? req.body.next : '';
+    const next = sanitizeNextUrl(nextInput, '/');
 
-      if (!username || !password) {
-        res.status(400).json({ error: 'Username and password are required.' });
+    if (!username || !password) {
+      res.status(400).json({ error: 'Username and password are required.' });
+      return;
+    }
+
+    const user = getUserByUsername(username);
+    if (!user) {
+      await verifyPassword(password, DUMMY_PASSWORD_HASH);
+      appendAuditLog({
+        actorUserId: null,
+        eventType: 'auth.login.failed',
+        targetType: 'user',
+        targetId: username.toLowerCase(),
+        detailsJson: JSON.stringify({ reason: 'user_not_found' }),
+        ip: requestIp(req),
+      });
+      res.status(401).json({ error: 'Invalid username or password.' });
+      return;
+    }
+
+    const valid = await verifyPassword(password, user.password_hash);
+    if (!valid) {
+      appendAuditLog({
+        actorUserId: user.id,
+        eventType: 'auth.login.failed',
+        targetType: 'user',
+        targetId: String(user.id),
+        detailsJson: JSON.stringify({ reason: 'invalid_password' }),
+        ip: requestIp(req),
+      });
+      res.status(401).json({ error: 'Invalid username or password.' });
+      return;
+    }
+
+    req.session.regenerate((err) => {
+      if (err) {
+        res.status(500).json({ error: 'Failed to create session' });
         return;
       }
-
-      const user = getUserByUsername(username);
-      if (!user) {
-        await verifyPassword(password, DUMMY_PASSWORD_HASH);
-        appendAuditLog({
-          actorUserId: null,
-          eventType: 'auth.login.failed',
-          targetType: 'user',
-          targetId: username.toLowerCase(),
-          detailsJson: JSON.stringify({ reason: 'user_not_found' }),
-          ip: requestIp(req),
-        });
-        res.status(401).json({ error: 'Invalid username or password.' });
-        return;
-      }
-
-      const valid = await verifyPassword(password, user.password_hash);
-      if (!valid) {
-        appendAuditLog({
-          actorUserId: user.id,
-          eventType: 'auth.login.failed',
-          targetType: 'user',
-          targetId: String(user.id),
-          detailsJson: JSON.stringify({ reason: 'invalid_password' }),
-          ip: requestIp(req),
-        });
-        res.status(401).json({ error: 'Invalid username or password.' });
-        return;
-      }
-
-      req.session.regenerate((err) => {
-        if (err) {
-          res.status(500).json({ error: 'Failed to create session' });
+      req.session.user_id = user.id;
+      req.session.username = user.username;
+      req.session.is_admin = Boolean(user.is_admin);
+      req.session.login_time = Date.now();
+      req.session.save((saveErr) => {
+        if (saveErr) {
+          res.status(500).json({ error: 'Failed to persist session' });
           return;
         }
-        req.session.user_id = user.id;
-        req.session.username = user.username;
-        req.session.is_admin = Boolean(user.is_admin);
-        req.session.login_time = Date.now();
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            res.status(500).json({ error: 'Failed to persist session' });
-            return;
-          }
-          appendAuditLog({
-            actorUserId: user.id,
-            eventType: 'auth.login.success',
-            targetType: 'session',
-            targetId: String(req.sessionID),
-            detailsJson: JSON.stringify({ next }),
-            ip: requestIp(req),
-          });
-          res.json({
-            success: true,
-            user: {
-              id: user.id,
-              username: user.username,
-              is_admin: Boolean(user.is_admin),
-              display_name: user.display_name ?? '',
-              email: user.email ?? '',
-              avatar: user.avatar ?? 1,
-            },
-            next,
-          });
+        appendAuditLog({
+          actorUserId: user.id,
+          eventType: 'auth.login.success',
+          targetType: 'session',
+          targetId: String(req.sessionID),
+          detailsJson: JSON.stringify({ next }),
+          ip: requestIp(req),
+        });
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            is_admin: Boolean(user.is_admin),
+            display_name: user.display_name ?? '',
+            email: user.email ?? '',
+            avatar: user.avatar ?? 1,
+          },
+          next,
         });
       });
-    },
-  );
+    });
+  });
 
   authRouter.post('/logout', (req: Request, res: Response) => {
-    const actorUserId =
-      typeof req.session.user_id === 'number' ? req.session.user_id : null;
+    const actorUserId = typeof req.session.user_id === 'number' ? req.session.user_id : null;
     req.session.destroy(() => {
       clearAuthCookies(res);
       appendAuditLog({
@@ -192,9 +181,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
 
   authRouter.get('/me', (req: Request, res: Response) => {
     const appId =
-      typeof req.query.app === 'string' && req.query.app.length > 0
-        ? req.query.app
-        : null;
+      typeof req.query.app === 'string' && req.query.app.length > 0 ? req.query.app : null;
     if (typeof req.session.user_id !== 'number' || req.session.user_id <= 0) {
       res.json({ authenticated: false, has_game_access: false });
       return;
@@ -229,101 +216,89 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
     });
   });
 
-  authRouter.get(
-    '/profile',
-    requireAuth,
-    profileLimiter,
-    (req: Request, res: Response) => {
-      const user = getUserById(req.session.user_id!);
-      if (!user) {
-        res.status(404).json({ error: 'User not found' });
+  authRouter.get('/profile', requireAuth, profileLimiter, (req: Request, res: Response) => {
+    const user = getUserById(req.session.user_id!);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        is_admin: Boolean(user.is_admin),
+        display_name: user.display_name ?? '',
+        email: user.email ?? '',
+        avatar: user.avatar ?? 1,
+      },
+    });
+  });
+
+  authRouter.patch('/profile', requireAuth, profileLimiter, (req: Request, res: Response) => {
+    const user = getUserById(req.session.user_id!);
+    if (!user) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const updates: string[] = [];
+    const values: Array<string | number> = [];
+    if (typeof req.body?.display_name === 'string') {
+      const displayName = sanitizePlainText(req.body.display_name, 80);
+      updates.push('display_name = ?');
+      values.push(displayName);
+    }
+    if (typeof req.body?.email === 'string') {
+      const email = sanitizeEmail(req.body.email);
+      if (req.body.email.length > 0 && email.length === 0) {
+        res.status(400).json({ error: 'Invalid email format.' });
         return;
       }
-      res.json({
-        user: {
-          id: user.id,
-          username: user.username,
-          is_admin: Boolean(user.is_admin),
-          display_name: user.display_name ?? '',
-          email: user.email ?? '',
-          avatar: user.avatar ?? 1,
-        },
-      });
-    },
-  );
-
-  authRouter.patch(
-    '/profile',
-    requireAuth,
-    profileLimiter,
-    (req: Request, res: Response) => {
-      const user = getUserById(req.session.user_id!);
-      if (!user) {
-        res.status(404).json({ error: 'User not found' });
+      updates.push('email = ?');
+      values.push(email);
+    }
+    if (req.body?.avatar !== undefined) {
+      const avatar = Number(req.body.avatar);
+      if (!Number.isInteger(avatar) || avatar < 1 || avatar > 16) {
+        res.status(400).json({ error: 'Avatar must be between 1 and 16.' });
         return;
       }
+      updates.push('avatar = ?');
+      values.push(avatar);
+    }
 
-      const updates: string[] = [];
-      const values: Array<string | number> = [];
-      if (typeof req.body?.display_name === 'string') {
-        const displayName = sanitizePlainText(req.body.display_name, 80);
-        updates.push('display_name = ?');
-        values.push(displayName);
-      }
-      if (typeof req.body?.email === 'string') {
-        const email = sanitizeEmail(req.body.email);
-        if (req.body.email.length > 0 && email.length === 0) {
-          res.status(400).json({ error: 'Invalid email format.' });
-          return;
-        }
-        updates.push('email = ?');
-        values.push(email);
-      }
-      if (req.body?.avatar !== undefined) {
-        const avatar = Number(req.body.avatar);
-        if (!Number.isInteger(avatar) || avatar < 1 || avatar > 16) {
-          res.status(400).json({ error: 'Avatar must be between 1 and 16.' });
-          return;
-        }
-        updates.push('avatar = ?');
-        values.push(avatar);
-      }
+    if (updates.length === 0) {
+      res.status(400).json({ error: 'No profile updates provided.' });
+      return;
+    }
 
-      if (updates.length === 0) {
-        res.status(400).json({ error: 'No profile updates provided.' });
-        return;
-      }
-
-      values.push(user.id);
-      db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(
-        ...values,
-      );
-      const updated = getUserById(user.id);
-      if (!updated) {
-        res.status(500).json({ error: 'Failed to load updated profile.' });
-        return;
-      }
-      appendAuditLog({
-        actorUserId: user.id,
-        eventType: 'auth.profile.update',
-        targetType: 'user',
-        targetId: String(user.id),
-        detailsJson: JSON.stringify({ updates }),
-        ip: requestIp(req),
-      });
-      res.json({
-        success: true,
-        user: {
-          id: updated.id,
-          username: updated.username,
-          is_admin: Boolean(updated.is_admin),
-          display_name: updated.display_name ?? '',
-          email: updated.email ?? '',
-          avatar: updated.avatar ?? 1,
-        },
-      });
-    },
-  );
+    values.push(user.id);
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    const updated = getUserById(user.id);
+    if (!updated) {
+      res.status(500).json({ error: 'Failed to load updated profile.' });
+      return;
+    }
+    appendAuditLog({
+      actorUserId: user.id,
+      eventType: 'auth.profile.update',
+      targetType: 'user',
+      targetId: String(user.id),
+      detailsJson: JSON.stringify({ updates }),
+      ip: requestIp(req),
+    });
+    res.json({
+      success: true,
+      user: {
+        id: updated.id,
+        username: updated.username,
+        is_admin: Boolean(updated.is_admin),
+        display_name: updated.display_name ?? '',
+        email: updated.email ?? '',
+        avatar: updated.avatar ?? 1,
+      },
+    });
+  });
 
   authRouter.post(
     '/change-password',
@@ -333,15 +308,11 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
       const currentPassword = String(req.body?.current_password ?? '');
       const newPassword = String(req.body?.new_password ?? '');
       if (!currentPassword || !newPassword) {
-        res
-          .status(400)
-          .json({ error: 'current_password and new_password are required.' });
+        res.status(400).json({ error: 'current_password and new_password are required.' });
         return;
       }
       if (newPassword.length < 8 || newPassword.length > 128) {
-        res
-          .status(400)
-          .json({ error: 'Password must be between 8 and 128 characters.' });
+        res.status(400).json({ error: 'Password must be between 8 and 128 characters.' });
         return;
       }
 
@@ -366,10 +337,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
 
       const hash = await hashPassword(newPassword);
       db.transaction(() => {
-        db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(
-          hash,
-          user.id,
-        );
+        db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, user.id);
         revokeSessionsForUser(user.id);
       })();
       appendAuditLog({
@@ -383,24 +351,19 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
     },
   );
 
-  authRouter.post(
-    '/logout-all',
-    passwordLimiter,
-    requireAuth,
-    (req: Request, res: Response) => {
-      const userId = req.session.user_id!;
-      revokeSessionsForUser(userId);
-      appendAuditLog({
-        actorUserId: userId,
-        eventType: 'auth.logout_all',
-        targetType: 'user',
-        targetId: String(userId),
-        ip: requestIp(req),
-      });
-      clearAuthCookies(res);
-      res.json({ success: true });
-    },
-  );
+  authRouter.post('/logout-all', passwordLimiter, requireAuth, (req: Request, res: Response) => {
+    const userId = req.session.user_id!;
+    revokeSessionsForUser(userId);
+    appendAuditLog({
+      actorUserId: userId,
+      eventType: 'auth.logout_all',
+      targetType: 'user',
+      targetId: String(userId),
+      ip: requestIp(req),
+    });
+    clearAuthCookies(res);
+    res.json({ success: true });
+  });
 
   return authRouter;
 }

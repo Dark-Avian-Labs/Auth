@@ -1,17 +1,10 @@
-import {
-  Component,
-  Fragment,
-  lazy,
-  Suspense,
-  type ErrorInfo,
-  type ReactNode,
-} from 'react';
+import { Component, Fragment, lazy, Suspense, type ErrorInfo, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 
-import { APP_PATHS } from './paths';
 import { Layout } from '../components/Layout/Layout';
 import { useAuth } from '../features/auth/AuthContext';
 import { RequireAuth } from '../features/auth/RequireAuth';
+import { APP_PATHS } from './paths';
 
 const LoginPage = lazy(() =>
   import('../features/auth/LoginPage').then((mod) => ({
@@ -49,12 +42,7 @@ type RouteErrorBoundaryState = {
 const MAX_RETRIES = 3;
 
 function isChunkLoadError(error: unknown) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === 'string'
-        ? error
-        : '';
+  const message = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
   const lowered = message.toLowerCase();
   return (
     lowered.includes('chunkloaderror') ||
@@ -67,10 +55,7 @@ function isChunkLoadError(error: unknown) {
   );
 }
 
-class RouteErrorBoundary extends Component<
-  { children: ReactNode },
-  RouteErrorBoundaryState
-> {
+class RouteErrorBoundary extends Component<{ children: ReactNode }, RouteErrorBoundaryState> {
   state: RouteErrorBoundaryState = {
     hasError: false,
     isChunkError: false,
@@ -78,9 +63,7 @@ class RouteErrorBoundary extends Component<
     exceededRetryLimit: false,
   };
 
-  static getDerivedStateFromError(
-    error: unknown,
-  ): Partial<RouteErrorBoundaryState> {
+  static getDerivedStateFromError(error: unknown): Partial<RouteErrorBoundaryState> {
     return {
       hasError: true,
       isChunkError: isChunkLoadError(error),
@@ -120,14 +103,13 @@ class RouteErrorBoundary extends Component<
     if (this.state.exceededRetryLimit) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
-          <p className="text-sm text-muted">
-            We could not recover after multiple retry attempts. Please reload
-            the app to continue.
+          <p className="text-muted text-sm">
+            We could not recover after multiple retry attempts. Please reload the app to continue.
           </p>
           <button
             type="button"
             onClick={this.reload}
-            className="rounded-md border border-default px-3 py-1.5 text-sm"
+            className="border-default rounded-md border px-3 py-1.5 text-sm"
           >
             Reload app
           </button>
@@ -138,7 +120,7 @@ class RouteErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
-          <p className="text-sm text-muted">
+          <p className="text-muted text-sm">
             {this.state.isChunkError
               ? 'A network/chunk loading error occurred while opening this page.'
               : 'Something went wrong while loading this page.'}
@@ -147,7 +129,7 @@ class RouteErrorBoundary extends Component<
             <button
               type="button"
               onClick={this.retry}
-              className="rounded-md bg-foreground px-3 py-1.5 text-sm text-background"
+              className="bg-foreground text-background rounded-md px-3 py-1.5 text-sm"
             >
               Retry
             </button>
@@ -155,7 +137,7 @@ class RouteErrorBoundary extends Component<
               <button
                 type="button"
                 onClick={this.reload}
-                className="rounded-md border border-default px-3 py-1.5 text-sm"
+                className="border-default rounded-md border px-3 py-1.5 text-sm"
               >
                 Reload app
               </button>
@@ -165,9 +147,7 @@ class RouteErrorBoundary extends Component<
       );
     }
 
-    return (
-      <Fragment key={this.state.retryCount}>{this.props.children}</Fragment>
-    );
+    return <Fragment key={this.state.retryCount}>{this.props.children}</Fragment>;
   }
 }
 
@@ -180,7 +160,7 @@ function RouteFallback() {
       aria-busy="true"
       aria-atomic="true"
     >
-      <p className="text-sm text-muted">Loading...</p>
+      <p className="text-muted text-sm">Loading...</p>
     </div>
   );
 }
@@ -198,13 +178,13 @@ function LoginRoute() {
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
           <h1 className="text-lg font-semibold">Authentication unavailable</h1>
-          <p className="text-sm text-muted">
+          <p className="text-muted text-sm">
             We could not verify your session. Please refresh and try again.
           </p>
           <button
             type="button"
             onClick={() => window.location.reload()}
-            className="rounded-md border border-default px-3 py-1.5 text-sm"
+            className="border-default rounded-md border px-3 py-1.5 text-sm"
           >
             Reload
           </button>
@@ -216,12 +196,8 @@ function LoginRoute() {
       }
       return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
-          <h1 className="text-lg font-semibold">
-            Checking authentication status
-          </h1>
-          <p className="text-sm text-muted">
-            Please wait while we finish loading your session.
-          </p>
+          <h1 className="text-lg font-semibold">Checking authentication status</h1>
+          <p className="text-muted text-sm">Please wait while we finish loading your session.</p>
         </div>
       );
   }
@@ -231,9 +207,7 @@ function NotFoundPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4 text-center">
       <h1 className="text-lg font-semibold">Page not found</h1>
-      <p className="text-sm text-muted">
-        The page you requested does not exist.
-      </p>
+      <p className="text-muted text-sm">The page you requested does not exist.</p>
     </div>
   );
 }

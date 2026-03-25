@@ -27,16 +27,12 @@ interface BaseProps {
 }
 
 interface ButtonProps
-  extends
-    Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'>,
-    BaseProps {
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'className'>, BaseProps {
   href?: never;
 }
 
 interface LinkButtonProps
-  extends
-    Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'>,
-    BaseProps {
+  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, 'className'>, BaseProps {
   href: string;
 }
 
@@ -54,7 +50,7 @@ export function Button(props: ButtonProps | LinkButtonProps) {
 
   if (asChild) {
     if (!isValidElement(children)) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (import.meta.env.DEV) {
         console.warn(
           "Button: 'asChild' expects a single valid React element as children",
           children,

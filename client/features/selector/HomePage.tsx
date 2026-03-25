@@ -12,8 +12,8 @@ type CardContentProps = {
 function CardContent({ label, subtitle }: CardContentProps) {
   return (
     <>
-      <h2 className="text-lg font-semibold text-foreground">{label}</h2>
-      <p className="mt-1 text-sm text-muted">{subtitle}</p>
+      <h2 className="text-foreground text-lg font-semibold">{label}</h2>
+      <p className="text-muted mt-1 text-sm">{subtitle}</p>
     </>
   );
 }
@@ -38,21 +38,14 @@ export function HomePage() {
       return false;
     }
     const scheme = schemeMatch[1].toLowerCase();
-    return (
-      scheme === 'http' ||
-      scheme === 'https' ||
-      scheme === 'mailto' ||
-      scheme === 'tel'
-    );
+    return scheme === 'http' || scheme === 'https' || scheme === 'mailto' || scheme === 'tel';
   };
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <GlassCard className="p-6">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Welcome, {auth.user.username}
-        </h1>
-        <p className="mt-2 text-sm text-muted">
+        <h1 className="text-foreground text-2xl font-semibold">Welcome, {auth.user.username}</h1>
+        <p className="text-muted mt-2 text-sm">
           Choose an app to continue. Only apps you have access to are shown.
         </p>
       </GlassCard>
@@ -79,7 +72,7 @@ export function HomePage() {
         </div>
       ) : (
         <GlassCard className="p-6">
-          <p className="text-sm text-muted">
+          <p className="text-muted text-sm">
             No apps assigned to your account yet. Contact an administrator.
           </p>
         </GlassCard>

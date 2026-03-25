@@ -1,66 +1,68 @@
 {
   "name": "auth",
-  "version": "2.0.0",
-  "description": "Dark Avian LABS Auth Service",
+  "version": "2.1.1",
   "private": true,
+  "description": "Dark Avian LABS Auth Service",
   "type": "module",
   "scripts": {
-    "typecheck": "npm run typecheck:server && npm run typecheck:client",
+    "typecheck": "pnpm run typecheck:server && pnpm run typecheck:client",
     "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
-    "typecheck:client": "tsc -p tsconfig.json --noEmit",
-    "build": "npm run typecheck && tsc -p tsconfig.server.json && vite build",
-    "start": "node --env-file=.env dist/server/index.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
-    "check-format": "prettier --check .",
+    "typecheck:client": "tsc -p tsconfig.client.json --noEmit",
+    "build": "pnpm run typecheck && tsc -p tsconfig.server.json && vite build",
+    "start": "node dist/server/index.js",
+    "validate": "node run-quality-checks.mjs",
+    "lint": "oxlint .",
+    "lint:fix": "oxlint --fix .",
+    "format": "oxfmt --write .",
+    "check-format": "oxfmt --check .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
-  "engines": {
-    "node": ">=25.0.0"
-  },
   "dependencies": {
+    "@dotenvx/dotenvx": "^1.57.2",
     "@fontsource-variable/inter": "^5.2.8",
     "argon2": "^0.44.0",
-    "better-sqlite3": "^12.6.2",
+    "better-sqlite3": "^12.8.0",
     "better-sqlite3-session-store": "^0.1.0",
     "clsx": "^2.1.1",
     "cookie-parser": "^1.4.7",
     "csrf-sync": "^4.2.1",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
+    "express-rate-limit": "^8.3.1",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.0"
+    "react-router-dom": "^7.13.2"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.3",
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.2.2",
     "@types/better-sqlite3": "^7.6.13",
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/express-session": "^1.18.2",
-    "@types/node": "^25.2.3",
+    "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/coverage-v8": "^4.0.18",
-    "eslint": "^9.39.3",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-import-x": "^4.16.1",
-    "eslint-plugin-n": "^17.24.0",
-    "eslint-plugin-promise": "^7.2.1",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "prettier": "^3.8.1",
-    "tailwindcss": "^4.1.18",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.56.1",
-    "vite": "^7.3.1",
-    "vitest": "^4.0.18"
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.1",
+    "oxfmt": "^0.42.0",
+    "oxlint": "^1.57.0",
+    "tailwindcss": "^4.2.2",
+    "typescript": "^6.0.2",
+    "vite": "^8.0.2",
+    "vitest": "^4.1.1"
+  },
+  "engines": {
+    "node": ">=25.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "packageManager": "pnpm@10.32.1",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2",
+      "better-sqlite3"
+    ]
   }
 }

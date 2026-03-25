@@ -2,16 +2,57 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { config as loadEnv } from '@dotenvx/dotenvx';
+
+function resolveEnvFilePath(projectRoot: string): string | null {
+  const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
+  const envFileByMode: Record<string, string> = {
+    production: '.env.production',
+    development: '.env.development',
+    test: '.env.test',
+  };
+  const isTestMode = normalizedNodeEnv === 'test';
+  const prioritizedFiles = [
+    envFileByMode[normalizedNodeEnv],
+    ...(isTestMode ? [] : ['.env.production']),
+    '.env.development',
+  ].filter((value, index, values): value is string => {
+    return typeof value === 'string' && values.indexOf(value) === index;
+  });
+
+  for (const fileName of prioritizedFiles) {
+    const candidatePath = path.join(projectRoot, fileName);
+    if (fs.existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+  return null;
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const parentName = path.basename(path.resolve(__dirname, '..'));
-export const PROJECT_ROOT = path.resolve(
-  __dirname,
-  parentName === 'dist' ? '../..' : '..',
-);
+export const PROJECT_ROOT = path.resolve(__dirname, parentName === 'dist' ? '../..' : '..');
+
+const envPath = resolveEnvFilePath(PROJECT_ROOT);
+if (envPath) {
+  try {
+    loadEnv({ path: envPath });
+  } catch (error) {
+    console.error(`[Config] Failed to load environment via loadEnv from "${envPath}".`, error);
+    throw error;
+  }
+} else {
+  const normalizedNodeEnv = (process.env.NODE_ENV ?? '').trim().toLowerCase();
+  console.warn(
+    `[Config] No env file resolved for project root "${PROJECT_ROOT}" (NODE_ENV="${process.env.NODE_ENV ?? ''}").`,
+  );
+  if (normalizedNodeEnv === 'production') {
+    throw new Error('[Config] No environment file found in production; expected .env.production.');
+  }
+}
 
 export const DATA_DIR = path.join(PROJECT_ROOT, 'data');
-export const CENTRAL_DB_PATH =
-  process.env.CENTRAL_DB_PATH || path.join(DATA_DIR, 'central.db');
+export const CENTRAL_DB_PATH = process.env.CENTRAL_DB_PATH || path.join(DATA_DIR, 'central.db');
 
 const _port = parseInt(process.env.PORT || '3000', 10);
 export const PORT = Number.isFinite(_port) && _port > 0 ? _port : 3000;
@@ -21,8 +62,7 @@ export const APP_ID = process.env.APP_ID?.trim() || 'auth';
 export const NODE_ENV = process.env.NODE_ENV || 'development';
 
 const DEFAULT_SESSION_SECRET = 'auth-dev-secret-change-me';
-export const SESSION_SECRET =
-  process.env.SESSION_SECRET || DEFAULT_SESSION_SECRET;
+export const SESSION_SECRET = process.env.SESSION_SECRET || DEFAULT_SESSION_SECRET;
 if (NODE_ENV === 'production' && SESSION_SECRET === DEFAULT_SESSION_SECRET) {
   throw new Error('SESSION_SECRET must be set in production.');
 }
@@ -35,17 +75,22 @@ function parseBooleanEnv(value: string | undefined): boolean | undefined {
   return undefined;
 }
 
+function parsePositiveIntEnv(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
 export const TRUST_PROXY = parseBooleanEnv(process.env.TRUST_PROXY) ?? false;
 export const SECURE_COOKIES =
   parseBooleanEnv(process.env.SECURE_COOKIES) ?? NODE_ENV === 'production';
 export const BASE_PROTOCOL =
-  process.env.BASE_PROTOCOL ||
-  (process.env.NODE_ENV === 'production' ? 'https' : 'http');
+  process.env.BASE_PROTOCOL || (NODE_ENV === 'production' ? 'https' : 'http');
 
-const defaultBaseDomain =
-  NODE_ENV === 'test' || NODE_ENV === 'development' ? 'example.test' : '';
-export const BASE_DOMAIN =
-  process.env.BASE_DOMAIN?.trim().toLowerCase() || defaultBaseDomain;
+const defaultBaseDomain = NODE_ENV === 'test' || NODE_ENV === 'development' ? 'example.test' : '';
+export const BASE_DOMAIN = process.env.BASE_DOMAIN?.trim().toLowerCase() || defaultBaseDomain;
 if (!BASE_DOMAIN) {
   throw new Error('BASE_DOMAIN must be set.');
 }
@@ -61,8 +106,7 @@ if (!hasValidBaseDomain) {
   );
 }
 
-export const AUTH_SUBDOMAIN =
-  process.env.AUTH_SUBDOMAIN?.trim().toLowerCase() || 'auth';
+export const AUTH_SUBDOMAIN = process.env.AUTH_SUBDOMAIN?.trim().toLowerCase() || 'auth';
 if (!DOMAIN_LABEL_REGEX.test(AUTH_SUBDOMAIN)) {
   throw new Error(
     'AUTH_SUBDOMAIN must start/end with an alphanumeric character and may contain internal hyphens.',
@@ -83,7 +127,7 @@ if (APP_LIST.length === 0) {
   throw new Error('APP_LIST must include at least one app id.');
 }
 for (const appId of APP_LIST) {
-  if (!/^[a-z0-9-]+$/.test(appId)) {
+  if (!DOMAIN_LABEL_REGEX.test(appId)) {
     throw new Error(`APP_LIST contains invalid app id "${appId}".`);
   }
 }
@@ -92,27 +136,29 @@ export const APP_URL_BY_ID = Object.fromEntries(
   APP_LIST.map((appId) => [appId, buildSubdomainUrl(appId)]),
 ) as Record<string, string>;
 
-export const COOKIE_DOMAIN =
-  process.env.COOKIE_DOMAIN?.trim() || `.${BASE_DOMAIN}`;
+export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN?.trim() || `.${BASE_DOMAIN}`;
 
-export const AUTH_COOKIE_DOMAIN =
-  process.env.AUTH_COOKIE_DOMAIN?.trim() || COOKIE_DOMAIN;
-export const AUTH_COOKIE_NAME =
-  process.env.AUTH_COOKIE_NAME?.trim() || 'darkavianlabs.auth.sid';
-export const SESSION_COOKIE_NAME =
-  process.env.SESSION_COOKIE_NAME?.trim() || AUTH_COOKIE_NAME;
+export const AUTH_COOKIE_DOMAIN = process.env.AUTH_COOKIE_DOMAIN?.trim() || COOKIE_DOMAIN;
+export const AUTH_COOKIE_NAME = process.env.AUTH_COOKIE_NAME?.trim() || 'darkavianlabs.auth.sid';
+export const SESSION_COOKIE_NAME = process.env.SESSION_COOKIE_NAME?.trim() || AUTH_COOKIE_NAME;
 
 export const ALLOWED_APP_ORIGINS = Object.values(APP_URL_BY_ID).map(
   (value) => new URL(value).origin,
 );
-export const ALLOWED_NEXT_ORIGINS = [
-  new URL(AUTH_PUBLIC_BASE_URL).origin,
-  ...ALLOWED_APP_ORIGINS,
-];
+export const ALLOWED_NEXT_ORIGINS = [new URL(AUTH_PUBLIC_BASE_URL).origin, ...ALLOWED_APP_ORIGINS];
 
 export const SHARED_THEME_COOKIE = 'dal.theme.mode';
 export const SHARED_THEME_COOKIE_DOMAIN =
   process.env.SHARED_THEME_COOKIE_DOMAIN?.trim() || AUTH_COOKIE_DOMAIN || '';
+
+export const AUTH_API_RATE_LIMIT_WINDOW_MS = parsePositiveIntEnv(
+  process.env.AUTH_API_RATE_LIMIT_WINDOW_MS,
+  15 * 60 * 1000,
+);
+export const AUTH_API_RATE_LIMIT_MAX = parsePositiveIntEnv(
+  process.env.AUTH_API_RATE_LIMIT_MAX,
+  1200,
+);
 
 export function ensureDataDirs(): void {
   for (const dir of [DATA_DIR]) {

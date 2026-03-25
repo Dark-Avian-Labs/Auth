@@ -1,6 +1,7 @@
-import Database from 'better-sqlite3';
 import fs from 'fs';
 import path from 'path';
+
+import Database, { type Database as DatabaseType } from 'better-sqlite3';
 
 import { CENTRAL_DB_PATH } from '../config.js';
 
@@ -8,7 +9,7 @@ if (!fs.existsSync(path.dirname(CENTRAL_DB_PATH))) {
   fs.mkdirSync(path.dirname(CENTRAL_DB_PATH), { recursive: true });
 }
 
-export const db = new Database(CENTRAL_DB_PATH);
+export const db: DatabaseType = new Database(CENTRAL_DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -22,9 +23,7 @@ function ensureMigrationTable(): void {
 }
 
 function hasMigration(id: string): boolean {
-  const row = db
-    .prepare('SELECT 1 FROM schema_migrations WHERE id = ?')
-    .get(id);
+  const row = db.prepare('SELECT 1 FROM schema_migrations WHERE id = ?').get(id);
   return Boolean(row);
 }
 
@@ -43,9 +42,7 @@ function normalizeUsersSchema(): void {
   const hasAvatar = rows.some((row) => row.name === 'avatar');
 
   if (!hasDisplayName) {
-    db.exec(
-      "ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''",
-    );
+    db.exec("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
   }
   if (!hasEmail) {
     db.exec("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''");
@@ -188,9 +185,7 @@ function queryAndGroupByUserId<TRow extends { user_id: number }, TValue>(
   }
 
   const placeholders = uniqueUserIds.map(() => '?').join(', ');
-  const rows = db
-    .prepare(buildSql(placeholders))
-    .all(...uniqueUserIds) as TRow[];
+  const rows = db.prepare(buildSql(placeholders)).all(...uniqueUserIds) as TRow[];
 
   for (const row of rows) {
     groupedByUserId[row.user_id] ??= [];
@@ -217,20 +212,15 @@ export function hasAppAccess(userId: number, appId: string): boolean {
   return Boolean(row);
 }
 
-export function setAppAccess(
-  userId: number,
-  appId: string,
-  enabled: boolean,
-): void {
+export function setAppAccess(userId: number, appId: string, enabled: boolean): void {
   if (enabled) {
-    db.prepare(
-      'INSERT OR IGNORE INTO user_game_access (user_id, game_id) VALUES (?, ?)',
-    ).run(userId, appId);
+    db.prepare('INSERT OR IGNORE INTO user_game_access (user_id, game_id) VALUES (?, ?)').run(
+      userId,
+      appId,
+    );
     return;
   }
-  db.prepare(
-    'DELETE FROM user_game_access WHERE user_id = ? AND game_id = ?',
-  ).run(userId, appId);
+  db.prepare('DELETE FROM user_game_access WHERE user_id = ? AND game_id = ?').run(userId, appId);
 }
 
 export function listPermissions(
@@ -270,15 +260,12 @@ export function listPermissionsForUsers(
   );
 }
 
-export function replacePermissions(
-  userId: number,
-  appId: string,
-  permissions: string[],
-): void {
+export function replacePermissions(userId: number, appId: string, permissions: string[]): void {
   const tx = db.transaction(() => {
-    db.prepare(
-      'DELETE FROM user_app_permissions WHERE user_id = ? AND app_id = ?',
-    ).run(userId, appId);
+    db.prepare('DELETE FROM user_app_permissions WHERE user_id = ? AND app_id = ?').run(
+      userId,
+      appId,
+    );
     const insert = db.prepare(
       'INSERT OR IGNORE INTO user_app_permissions (user_id, app_id, permission) VALUES (?, ?, ?)',
     );

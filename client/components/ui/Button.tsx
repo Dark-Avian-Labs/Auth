@@ -50,7 +50,7 @@ export function Button(props: ButtonProps | LinkButtonProps) {
 
   if (asChild) {
     if (!isValidElement(children)) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (import.meta.env.DEV) {
         console.warn(
           "Button: 'asChild' expects a single valid React element as children",
           children,

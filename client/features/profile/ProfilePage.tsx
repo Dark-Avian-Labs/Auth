@@ -1,3 +1,4 @@
+import clsx from 'clsx';
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -6,13 +7,52 @@ import { Button } from '../../components/ui/Button';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
+import { useTheme, type ThemeMode, type UiStyle } from '../../context/ThemeContext';
 import { apiFetch } from '../../utils/api';
 import { getProfileIconSrc, PROFILE_AVATAR_IDS } from '../../utils/profileIcons';
 import { useAuth } from '../auth/AuthContext';
 
+function ModePillToggle({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode) => void }) {
+  return (
+    <div
+      className="border-glass-border bg-glass/40 inline-flex rounded-full border p-0.5"
+      role="group"
+      aria-label="Color mode"
+    >
+      <button
+        type="button"
+        className={clsx(
+          'rounded-full px-4 py-1.5 text-xs font-medium transition-all outline-none',
+          mode === 'light'
+            ? 'bg-glass-active text-foreground shadow-sm'
+            : 'text-muted hover:text-foreground',
+        )}
+        aria-pressed={mode === 'light'}
+        onClick={() => setMode('light')}
+      >
+        Light
+      </button>
+      <button
+        type="button"
+        className={clsx(
+          'rounded-full px-4 py-1.5 text-xs font-medium transition-all outline-none',
+          mode === 'dark'
+            ? 'bg-glass-active text-foreground shadow-sm'
+            : 'text-muted hover:text-foreground',
+        )}
+        aria-pressed={mode === 'dark'}
+        onClick={() => setMode('dark')}
+      >
+        Dark
+      </button>
+    </div>
+  );
+}
+
 export function ProfilePage() {
   const location = useLocation();
   const { auth, updateProfile } = useAuth();
+  const { mode, setMode, uiStyle, setUiStyle } = useTheme();
   const profile = auth.user;
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -196,65 +236,98 @@ export function ProfilePage() {
         </div>
       </GlassCard>
 
-      <GlassCard className="p-6">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label htmlFor="profile-username" className="text-muted mb-1.5 block text-sm">
-              Username
-            </label>
-            <Input
-              id="profile-username"
-              type="text"
-              readOnlyStyle
-              value={profile.username}
-              readOnly
-            />
-          </div>
-          <div>
-            <label htmlFor="profile-role" className="text-muted mb-1.5 block text-sm">
-              Role
-            </label>
-            <Input
-              id="profile-role"
-              type="text"
-              readOnlyStyle
-              value={profile.is_admin ? 'Admin' : 'User'}
-              readOnly
-            />
-          </div>
-          <div>
-            <label htmlFor="profile-name" className="text-muted mb-1.5 block text-sm">
-              Name
-            </label>
-            <Input
-              id="profile-name"
-              type="text"
-              value={displayName}
-              onChange={(e) => {
-                setDisplayName(e.target.value);
-                setSaveStatus(null);
-              }}
-              placeholder="Display name"
-            />
-          </div>
-          <div>
-            <label htmlFor="profile-email" className="text-muted mb-1.5 block text-sm">
-              Email
-            </label>
-            <Input
-              id="profile-email"
-              type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-                setSaveStatus(null);
-              }}
-              placeholder="you@example.com"
-            />
+      <GlassCard className="overflow-hidden p-0">
+        <div className="profile-section-head">
+          <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">Details</h2>
+        </div>
+        <div className="p-6">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label htmlFor="profile-username" className="text-muted mb-1.5 block text-sm">
+                Username
+              </label>
+              <Input
+                id="profile-username"
+                type="text"
+                readOnlyStyle
+                value={profile.username}
+                readOnly
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-role" className="text-muted mb-1.5 block text-sm">
+                Role
+              </label>
+              <Input
+                id="profile-role"
+                type="text"
+                readOnlyStyle
+                value={profile.is_admin ? 'Admin' : 'User'}
+                readOnly
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-name" className="text-muted mb-1.5 block text-sm">
+                Name
+              </label>
+              <Input
+                id="profile-name"
+                type="text"
+                value={displayName}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  setSaveStatus(null);
+                }}
+                placeholder="Display name"
+              />
+            </div>
+            <div>
+              <label htmlFor="profile-email" className="text-muted mb-1.5 block text-sm">
+                Email
+              </label>
+              <Input
+                id="profile-email"
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  setSaveStatus(null);
+                }}
+                placeholder="you@example.com"
+              />
+            </div>
           </div>
         </div>
+      </GlassCard>
 
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
+      <GlassCard className="overflow-hidden p-0">
+        <div className="profile-section-head">
+          <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">Theme</h2>
+        </div>
+        <div className="flex flex-col gap-4 p-6 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="min-w-[12rem] flex-1">
+            <label htmlFor="profile-ui-style" className="text-muted mb-1.5 block text-sm">
+              Interface style
+            </label>
+            <select
+              id="profile-ui-style"
+              className="form-input w-full"
+              value={uiStyle}
+              onChange={(e) => setUiStyle(e.target.value as UiStyle)}
+            >
+              <option value="prism">Prism</option>
+              <option value="shadow">Shadow</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-muted text-sm">Appearance</span>
+            <ModePillToggle mode={mode} setMode={setMode} />
+          </div>
+        </div>
+      </GlassCard>
+
+      <GlassCard className="overflow-hidden p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-6">
           <Button
             type="button"
             variant="secondary"
@@ -265,17 +338,19 @@ export function ProfilePage() {
           >
             Change Password
           </Button>
-          <Button type="button" variant="accent" onClick={handleSave} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
-          </Button>
+          <div className="flex flex-col items-end gap-2">
+            <Button type="button" variant="accent" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : 'Save'}
+            </Button>
+            {saveStatus ? (
+              <p
+                className={`text-sm ${saveStatus.type === 'success' ? 'text-success' : 'text-danger'}`}
+              >
+                {saveStatus.message}
+              </p>
+            ) : null}
+          </div>
         </div>
-        {saveStatus && (
-          <p
-            className={`mt-3 text-sm ${saveStatus.type === 'success' ? 'text-success' : 'text-danger'}`}
-          >
-            {saveStatus.message}
-          </p>
-        )}
       </GlassCard>
 
       <Modal

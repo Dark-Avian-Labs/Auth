@@ -4,6 +4,22 @@
 @source '../../client/**/*.{ts,tsx,js,jsx,html}';
 @source '../../index.html';
 
+/*
+ * Tailwind theme tokens (utilities like border-glass-divider, bg-glass-hover/50).
+ * Runtime overrides live on :root / html.theme-light / html.ui-shadow below.
+ */
+@theme {
+  --color-foreground: #f8fafc;
+  --color-muted: #c7c7cf;
+
+  --color-glass: rgba(255, 255, 255, 0.024);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-glass-border-hover: rgba(255, 255, 255, 0.2);
+  --color-glass-hover: rgba(255, 255, 255, 0.05);
+  --color-glass-active: rgba(255, 255, 255, 0.12);
+  --color-glass-divider: rgba(255, 255, 255, 0.06);
+}
+
 :root {
   --color-foreground: #f8fafc;
   --color-muted: #c7c7cf;
@@ -13,6 +29,7 @@
   --color-glass-border-hover: rgba(255, 255, 255, 0.2);
   --color-glass-hover: rgba(255, 255, 255, 0.05);
   --color-glass-active: rgba(255, 255, 255, 0.12);
+  --color-glass-divider: rgba(255, 255, 255, 0.06);
   --color-bg-start: #000000;
   --color-bg-end: #0f172a;
   --color-bg-glow: rgba(100, 116, 139, 0.2);
@@ -34,6 +51,7 @@ html.theme-light {
   --color-glass-border-hover: rgba(57, 57, 57, 0.32);
   --color-glass-hover: rgba(255, 255, 255, 0.65);
   --color-glass-active: rgba(255, 255, 255, 0.75);
+  --color-glass-divider: rgba(20, 20, 20, 0.12);
   --color-bg-start: #e2e8f0;
   --color-bg-end: #f8fafc;
   --color-bg-glow: rgba(148, 163, 184, 0.28);
@@ -49,6 +67,7 @@ html.ui-shadow.theme-dark {
   --color-glass-border-hover: rgba(255, 255, 255, 0.2);
   --color-glass-hover: rgba(255, 255, 255, 0.08);
   --color-glass-active: rgba(255, 255, 255, 0.15);
+  --color-glass-divider: rgba(255, 255, 255, 0.08);
   --shadow-panel: 0 12px 48px rgba(0, 0, 0, 0.55);
   --color-bg-start: #020203;
   --color-bg-end: #0a0a10;
@@ -61,6 +80,7 @@ html.ui-shadow.theme-light {
   --color-glass-border-hover: rgba(15, 23, 42, 0.24);
   --color-glass-hover: rgba(255, 255, 255, 0.58);
   --color-glass-active: rgba(255, 255, 255, 0.72);
+  --color-glass-divider: rgba(15, 23, 42, 0.1);
   --shadow-panel: 0 12px 40px rgba(15, 23, 42, 0.12);
 }
 
@@ -228,6 +248,12 @@ html.ui-shadow.theme-light {
     object-fit: cover;
     object-position: center bottom;
     border-radius: 999px;
+  }
+
+  .profile-section-head {
+    border-bottom: 1px solid var(--color-glass-divider);
+    background: color-mix(in srgb, var(--color-glass-hover) 50%, transparent);
+    padding: 10px 16px;
   }
 
   .user-menu {

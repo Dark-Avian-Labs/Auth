@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 
-type ThemeMode = 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark';
 
 export type UiStyle = 'prism' | 'shadow';
 

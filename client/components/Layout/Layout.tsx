@@ -15,9 +15,10 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getProfileIconSrc } from '../../utils/profileIcons';
 import { SearchBar } from './SearchBar';
+import { ThemeRadioGroup } from './ThemeRadioGroup';
 
 export function Layout() {
-  const { mode, toggleMode } = useTheme();
+  const { mode, toggleMode, uiStyle, setUiStyle } = useTheme();
   const { auth, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -144,17 +145,20 @@ export function Layout() {
               {menuOpen && (
                 <Menu>
                   {!isLoggedIn ? (
-                    <Link
-                      ref={(node) => {
-                        firstMenuItemRef.current = node;
-                      }}
-                      to={APP_PATHS.login}
-                      className="user-menu-item"
-                      role="menuitem"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Login
-                    </Link>
+                    <>
+                      <Link
+                        ref={(node) => {
+                          firstMenuItemRef.current = node;
+                        }}
+                        to={APP_PATHS.login}
+                        className="user-menu-item"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        Login
+                      </Link>
+                      <ThemeRadioGroup uiStyle={uiStyle} setUiStyle={setUiStyle} />
+                    </>
                   ) : (
                     <>
                       {isAdmin && (
@@ -185,6 +189,7 @@ export function Layout() {
                       >
                         Profile
                       </Link>
+                      <ThemeRadioGroup uiStyle={uiStyle} setUiStyle={setUiStyle} />
                       <button
                         type="button"
                         className="user-menu-item text-left"

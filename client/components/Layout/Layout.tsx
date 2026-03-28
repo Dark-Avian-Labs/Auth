@@ -15,6 +15,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { getProfileIconSrc } from '../../utils/profileIcons';
 import { SearchBar } from './SearchBar';
+import { ThemeRadioGroup } from './ThemeRadioGroup';
 
 export function Layout() {
   const { mode, toggleMode, uiStyle, setUiStyle } = useTheme();
@@ -156,30 +157,7 @@ export function Layout() {
                       >
                         Login
                       </Link>
-                      <div
-                        className="text-muted border-glass-border mt-1 border-t px-3 pt-2 pb-1 text-xs font-semibold tracking-wide uppercase"
-                        role="presentation"
-                      >
-                        Theme
-                      </div>
-                      <button
-                        type="button"
-                        className="user-menu-item text-left"
-                        role="menuitemradio"
-                        aria-checked={uiStyle === 'prism'}
-                        onClick={() => setUiStyle('prism')}
-                      >
-                        Prism
-                      </button>
-                      <button
-                        type="button"
-                        className="user-menu-item text-left"
-                        role="menuitemradio"
-                        aria-checked={uiStyle === 'shadow'}
-                        onClick={() => setUiStyle('shadow')}
-                      >
-                        Shadow
-                      </button>
+                      <ThemeRadioGroup uiStyle={uiStyle} setUiStyle={setUiStyle} />
                     </>
                   ) : (
                     <>
@@ -211,30 +189,7 @@ export function Layout() {
                       >
                         Profile
                       </Link>
-                      <div
-                        className="text-muted border-glass-border mt-1 border-t px-3 pt-2 pb-1 text-xs font-semibold tracking-wide uppercase"
-                        role="presentation"
-                      >
-                        Theme
-                      </div>
-                      <button
-                        type="button"
-                        className="user-menu-item text-left"
-                        role="menuitemradio"
-                        aria-checked={uiStyle === 'prism'}
-                        onClick={() => setUiStyle('prism')}
-                      >
-                        Prism
-                      </button>
-                      <button
-                        type="button"
-                        className="user-menu-item text-left"
-                        role="menuitemradio"
-                        aria-checked={uiStyle === 'shadow'}
-                        onClick={() => setUiStyle('shadow')}
-                      >
-                        Shadow
-                      </button>
+                      <ThemeRadioGroup uiStyle={uiStyle} setUiStyle={setUiStyle} />
                       <button
                         type="button"
                         className="user-menu-item text-left"

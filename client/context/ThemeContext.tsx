@@ -95,10 +95,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, mode);
+      writeThemeCookie(mode);
     } catch (error) {
-      console.warn('Failed to persist theme mode to localStorage.', error);
+      console.warn('Failed to persist theme mode to localStorage or cookie.', error);
     }
-    writeThemeCookie(mode);
   }, [mode]);
 
   useEffect(() => {
@@ -110,10 +110,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     try {
       window.localStorage.setItem(UI_STYLE_STORAGE_KEY, uiStyle);
+      writeUiStyleCookie(uiStyle);
     } catch (error) {
-      console.warn('Failed to persist UI style to localStorage.', error);
+      console.warn('Failed to persist UI style to localStorage or cookie.', error);
     }
-    writeUiStyleCookie(uiStyle);
   }, [uiStyle]);
 
   useEffect(() => {

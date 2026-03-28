@@ -17,7 +17,7 @@ import { getProfileIconSrc } from '../../utils/profileIcons';
 import { SearchBar } from './SearchBar';
 
 export function Layout() {
-  const { mode, toggleMode } = useTheme();
+  const { mode, toggleMode, uiStyle, setUiStyle } = useTheme();
   const { auth, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
@@ -144,17 +144,43 @@ export function Layout() {
               {menuOpen && (
                 <Menu>
                   {!isLoggedIn ? (
-                    <Link
-                      ref={(node) => {
-                        firstMenuItemRef.current = node;
-                      }}
-                      to={APP_PATHS.login}
-                      className="user-menu-item"
-                      role="menuitem"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      Login
-                    </Link>
+                    <>
+                      <Link
+                        ref={(node) => {
+                          firstMenuItemRef.current = node;
+                        }}
+                        to={APP_PATHS.login}
+                        className="user-menu-item"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        Login
+                      </Link>
+                      <div
+                        className="text-muted border-glass-border mt-1 border-t px-3 pt-2 pb-1 text-xs font-semibold tracking-wide uppercase"
+                        role="presentation"
+                      >
+                        Theme
+                      </div>
+                      <button
+                        type="button"
+                        className="user-menu-item text-left"
+                        role="menuitemradio"
+                        aria-checked={uiStyle === 'prism'}
+                        onClick={() => setUiStyle('prism')}
+                      >
+                        Prism
+                      </button>
+                      <button
+                        type="button"
+                        className="user-menu-item text-left"
+                        role="menuitemradio"
+                        aria-checked={uiStyle === 'shadow'}
+                        onClick={() => setUiStyle('shadow')}
+                      >
+                        Shadow
+                      </button>
+                    </>
                   ) : (
                     <>
                       {isAdmin && (
@@ -185,6 +211,30 @@ export function Layout() {
                       >
                         Profile
                       </Link>
+                      <div
+                        className="text-muted border-glass-border mt-1 border-t px-3 pt-2 pb-1 text-xs font-semibold tracking-wide uppercase"
+                        role="presentation"
+                      >
+                        Theme
+                      </div>
+                      <button
+                        type="button"
+                        className="user-menu-item text-left"
+                        role="menuitemradio"
+                        aria-checked={uiStyle === 'prism'}
+                        onClick={() => setUiStyle('prism')}
+                      >
+                        Prism
+                      </button>
+                      <button
+                        type="button"
+                        className="user-menu-item text-left"
+                        role="menuitemradio"
+                        aria-checked={uiStyle === 'shadow'}
+                        onClick={() => setUiStyle('shadow')}
+                      >
+                        Shadow
+                      </button>
                       <button
                         type="button"
                         className="user-menu-item text-left"

@@ -4,10 +4,11 @@ import { useLocation } from 'react-router-dom';
 
 import { ALLOWED_NEXT_ORIGINS } from '../../app/config';
 import { Button } from '../../components/ui/Button';
+import { FormSelect } from '../../components/ui/FormSelect';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
-import { useTheme, type ThemeMode, type UiStyle } from '../../context/ThemeContext';
+import { useTheme, type ThemeMode } from '../../context/ThemeContext';
 import { apiFetch } from '../../utils/api';
 import { getProfileIconSrc, PROFILE_AVATAR_IDS } from '../../utils/profileIcons';
 import { useAuth } from '../auth/AuthContext';
@@ -309,15 +310,15 @@ export function ProfilePage() {
             <label htmlFor="profile-ui-style" className="text-muted mb-1.5 block text-sm">
               Interface style
             </label>
-            <select
+            <FormSelect
               id="profile-ui-style"
-              className="form-input w-full"
               value={uiStyle}
-              onChange={(e) => setUiStyle(e.target.value as UiStyle)}
-            >
-              <option value="prism">Prism</option>
-              <option value="shadow">Shadow</option>
-            </select>
+              options={[
+                { value: 'prism' as const, label: 'Prism' },
+                { value: 'shadow' as const, label: 'Shadow' },
+              ]}
+              onChange={setUiStyle}
+            />
           </div>
           <div className="flex flex-col gap-1.5">
             <span className="text-muted text-sm">Appearance</span>

@@ -327,9 +327,6 @@ export function ProfilePage() {
       </GlassCard>
 
       <GlassCard className="overflow-hidden p-0">
-        <div className="profile-section-head">
-          <h2 className="text-muted text-sm font-semibold tracking-wider uppercase">Security</h2>
-        </div>
         <div className="flex flex-wrap items-center justify-between gap-3 p-6">
           <Button
             type="button"

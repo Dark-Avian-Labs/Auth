@@ -1,5 +1,6 @@
 import clsx from 'clsx';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export type FormSelectOption<T extends string = string> = {
   value: T;
@@ -18,16 +19,36 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLUListElement>(null);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
 
   const current = options.find((o) => o.value === value) ?? options[0];
 
   const close = useCallback(() => setOpen(false), []);
 
+  const updateMenuPosition = useCallback(() => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setMenuPos({ top: r.bottom + 4, left: r.left, width: r.width });
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [open, updateMenuPosition]);
+
   useEffect(() => {
     if (!open) return;
     const onDocPointer = (e: MouseEvent | PointerEvent) => {
-      const el = rootRef.current;
-      if (!el || el.contains(e.target as Node)) return;
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       close();
     };
     const onKey = (e: KeyboardEvent) => {
@@ -40,6 +61,44 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
       document.removeEventListener('keydown', onKey);
     };
   }, [open, close]);
+
+  const menu = open ? (
+    <ul
+      ref={menuRef}
+      id={listboxId}
+      role="listbox"
+      aria-labelledby={id}
+      style={{
+        position: 'fixed',
+        top: menuPos.top,
+        left: menuPos.left,
+        width: menuPos.width,
+        zIndex: 'var(--z-dropdown)',
+      }}
+      className="border-glass-border bg-glass-hover/95 max-h-60 overflow-auto rounded-lg border p-1 shadow-[var(--shadow-panel)] backdrop-blur-md"
+    >
+      {options.map((opt) => (
+        <li key={opt.value} role="presentation">
+          <button
+            type="button"
+            role="option"
+            aria-selected={opt.value === value}
+            className={clsx(
+              'user-menu-item text-left',
+              opt.value === value && 'bg-glass-active text-foreground',
+            )}
+            onClick={() => {
+              onChange(opt.value);
+              close();
+              triggerRef.current?.focus();
+            }}
+          >
+            {opt.label}
+          </button>
+        </li>
+      ))}
+    </ul>
+  ) : null;
 
   return (
     <div ref={rootRef} className="relative">
@@ -73,35 +132,7 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
           />
         </svg>
       </button>
-      {open ? (
-        <ul
-          id={listboxId}
-          role="listbox"
-          aria-labelledby={id}
-          className="border-glass-border bg-glass-hover/95 absolute top-full right-0 left-0 z-[var(--z-dropdown)] mt-1 max-h-60 overflow-auto rounded-lg border p-1 shadow-[var(--shadow-panel)] backdrop-blur-md"
-        >
-          {options.map((opt) => (
-            <li key={opt.value} role="presentation">
-              <button
-                type="button"
-                role="option"
-                aria-selected={opt.value === value}
-                className={clsx(
-                  'user-menu-item text-left',
-                  opt.value === value && 'bg-glass-active text-foreground',
-                )}
-                onClick={() => {
-                  onChange(opt.value);
-                  close();
-                  triggerRef.current?.focus();
-                }}
-              >
-                {opt.label}
-              </button>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+      {menu ? createPortal(menu, document.body) : null}
     </div>
   );
 }

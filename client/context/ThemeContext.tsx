@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 type ThemeMode = 'light' | 'dark';
 
@@ -74,6 +82,7 @@ function writeUiStyleCookie(style: UiStyle): void {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const hasMountedRef = useRef(false);
   const [mode, setMode] = useState<ThemeMode>(resolveInitialMode);
   const [uiStyle, setUiStyle] = useState<UiStyle>(resolveInitialUiStyle);
 
@@ -81,6 +90,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.classList.remove('theme-light', 'theme-dark');
     root.classList.add(`theme-${mode}`);
+    if (!hasMountedRef.current) {
+      return;
+    }
     try {
       window.localStorage.setItem(THEME_STORAGE_KEY, mode);
     } catch (error) {
@@ -93,6 +105,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     root.classList.remove('ui-prism', 'ui-shadow');
     root.classList.add(`ui-${uiStyle}`);
+    if (!hasMountedRef.current) {
+      return;
+    }
     try {
       window.localStorage.setItem(UI_STYLE_STORAGE_KEY, uiStyle);
     } catch (error) {
@@ -100,6 +115,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     writeUiStyleCookie(uiStyle);
   }, [uiStyle]);
+
+  useEffect(() => {
+    hasMountedRef.current = true;
+  }, []);
 
   const value = useMemo<ThemeContextValue>(
     () => ({

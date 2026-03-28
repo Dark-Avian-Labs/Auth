@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import type { UiStyle } from '../../context/ThemeContext';
 
 type ThemeRadioGroupProps = {
@@ -6,11 +8,13 @@ type ThemeRadioGroupProps = {
 };
 
 export function ThemeRadioGroup({ uiStyle, setUiStyle }: ThemeRadioGroupProps) {
+  const themeGroupLabelId = useId();
+
   return (
-    <>
+    <div role="radiogroup" aria-labelledby={themeGroupLabelId}>
       <div
+        id={themeGroupLabelId}
         className="text-muted border-glass-border mt-1 border-t px-3 pt-2 pb-1 text-xs font-semibold tracking-wide uppercase"
-        role="presentation"
       >
         Theme
       </div>
@@ -32,6 +36,6 @@ export function ThemeRadioGroup({ uiStyle, setUiStyle }: ThemeRadioGroupProps) {
       >
         Shadow
       </button>
-    </>
+    </div>
   );
 }

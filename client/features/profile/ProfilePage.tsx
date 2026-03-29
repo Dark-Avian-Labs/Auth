@@ -23,7 +23,7 @@ function ModePillToggle({ mode, setMode }: { mode: ThemeMode; setMode: (m: Theme
       <button
         type="button"
         className={clsx(
-          'rounded-full px-4 py-1.5 text-xs font-medium transition-all outline-none',
+          'rounded-full px-4 py-1.5 text-xs font-medium transition-[color,background-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-[color:var(--color-glass-active)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg-start)] focus-visible:outline-none',
           mode === 'light'
             ? 'bg-glass-active text-foreground shadow-sm'
             : 'text-muted hover:text-foreground',
@@ -36,7 +36,7 @@ function ModePillToggle({ mode, setMode }: { mode: ThemeMode; setMode: (m: Theme
       <button
         type="button"
         className={clsx(
-          'rounded-full px-4 py-1.5 text-xs font-medium transition-all outline-none',
+          'rounded-full px-4 py-1.5 text-xs font-medium transition-[color,background-color,box-shadow] duration-200 focus-visible:ring-2 focus-visible:ring-[color:var(--color-glass-active)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--color-bg-start)] focus-visible:outline-none',
           mode === 'dark'
             ? 'bg-glass-active text-foreground shadow-sm'
             : 'text-muted hover:text-foreground',
@@ -341,7 +341,7 @@ export function ProfilePage() {
           </Button>
           <div className="flex flex-col items-end gap-2">
             <Button type="button" variant="accent" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? 'Saving…' : 'Save'}
             </Button>
             {saveStatus ? (
               <p
@@ -412,7 +412,7 @@ export function ProfilePage() {
             onClick={handleChangePassword}
             disabled={passwordSaving}
           >
-            {passwordSaving ? 'Saving...' : 'Update Password'}
+            {passwordSaving ? 'Saving…' : 'Update Password'}
           </Button>
         </div>
       </Modal>

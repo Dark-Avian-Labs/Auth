@@ -665,7 +665,7 @@ export function AdminPage() {
                   onClick={submitPasswordChange}
                   disabled={passwordSubmitting}
                 >
-                  {passwordSubmitting ? 'Saving…' : 'Confirm'}
+                  {passwordSubmitting ? 'Saving...' : 'Confirm'}
                 </Button>
               </div>
             </GlassCard>
@@ -779,7 +779,7 @@ export function AdminPage() {
                   onClick={submitPermissionsChange}
                   disabled={permissionsSubmitting}
                 >
-                  {permissionsSubmitting ? 'Saving…' : 'Confirm'}
+                  {permissionsSubmitting ? 'Saving...' : 'Confirm'}
                 </Button>
               </div>
             </GlassCard>

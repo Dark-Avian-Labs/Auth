@@ -145,7 +145,7 @@ export function LoginPage() {
           ) : null}
           <div className="pt-1">
             <Button type="submit" variant="accent" className="w-full" disabled={saving}>
-              {saving ? 'Signing in…' : 'Login'}
+              {saving ? 'Signing in...' : 'Login'}
             </Button>
           </div>
         </form>

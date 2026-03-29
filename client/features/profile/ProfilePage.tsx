@@ -341,7 +341,7 @@ export function ProfilePage() {
           </Button>
           <div className="flex flex-col items-end gap-2">
             <Button type="button" variant="accent" onClick={handleSave} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? 'Saving...' : 'Save'}
             </Button>
             {saveStatus ? (
               <p
@@ -412,7 +412,7 @@ export function ProfilePage() {
             onClick={handleChangePassword}
             disabled={passwordSaving}
           >
-            {passwordSaving ? 'Saving…' : 'Update Password'}
+            {passwordSaving ? 'Saving...' : 'Update Password'}
           </Button>
         </div>
       </Modal>

@@ -14,6 +14,9 @@ type FormSelectProps<T extends string> = {
   onChange: (value: T) => void;
 };
 
+/** Capture-phase scroll (for nested scroll containers); passive avoids blocking scroll jank. */
+const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
+
 export function FormSelect<T extends string>({ id, value, options, onChange }: FormSelectProps<T>) {
   const listboxId = useId();
   const [open, setOpen] = useState(false);
@@ -36,11 +39,11 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
   useLayoutEffect(() => {
     if (!open) return;
     updateMenuPosition();
-    window.addEventListener('resize', updateMenuPosition);
-    window.addEventListener('scroll', updateMenuPosition, true);
+    window.addEventListener('resize', updateMenuPosition, { passive: true });
+    window.addEventListener('scroll', updateMenuPosition, WINDOW_REPOSITION_LISTENERS);
     return () => {
       window.removeEventListener('resize', updateMenuPosition);
-      window.removeEventListener('scroll', updateMenuPosition, true);
+      window.removeEventListener('scroll', updateMenuPosition, WINDOW_REPOSITION_LISTENERS);
     };
   }, [open, updateMenuPosition]);
 
@@ -106,7 +109,7 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
         ref={triggerRef}
         type="button"
         id={id}
-        className="form-input flex w-full cursor-pointer items-center justify-between gap-2 text-left outline-none"
+        className="form-input flex w-full cursor-pointer items-center justify-between gap-2 text-left"
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}

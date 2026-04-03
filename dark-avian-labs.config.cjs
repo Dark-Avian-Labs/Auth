@@ -1,11 +1,12 @@
 const path = require('path');
 
 const APPS_ROOT = process.env.DARK_AVIAN_APPS_ROOT || '/var/www/applications';
+
 const baseApp = {
   namespace: 'dark-avian-labs',
   script: './dist/server/index.js',
   interpreter: 'node',
-  node_args: '--env-file=.env',
+  node_args: '--env-file=.env.production',
   instances: 1,
   exec_mode: 'fork',
   watch: false,

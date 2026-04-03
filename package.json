@@ -29,12 +29,12 @@
     "cookie-parser": "^1.4.7",
     "csrf-sync": "^4.2.1",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.3.1",
+    "express-rate-limit": "^8.3.2",
     "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.2"
+    "react-router-dom": "^7.14.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

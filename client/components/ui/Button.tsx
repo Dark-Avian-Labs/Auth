@@ -64,8 +64,9 @@ export function Button(props: ButtonProps | LinkButtonProps) {
       variant: _variant,
       className: _className,
       asChild: _asChild,
+      href: _href,
       ...childProps
-    } = props as ButtonProps;
+    } = props;
 
     type ChildProps = HTMLAttributes<HTMLElement> & Record<string, unknown>;
     const child = children as ReactElement<ChildProps>;

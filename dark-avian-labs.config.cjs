@@ -1,6 +1,6 @@
 const path = require('path');
 
-const APPS_ROOT = process.env.DARK_AVIAN_APPS_ROOT || '/var/www/applications';
+const APPS_ROOT = process.env.DARK_AVIAN_APPS_ROOT || path.join(__dirname, 'applications');
 
 const baseApp = {
   namespace: 'dark-avian-labs',

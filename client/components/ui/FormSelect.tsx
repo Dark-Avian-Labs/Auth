@@ -14,7 +14,6 @@ type FormSelectProps<T extends string> = {
   onChange: (value: T) => void;
 };
 
-/** Capture-phase scroll (for nested scroll containers); passive avoids blocking scroll jank. */
 const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
 
 export function FormSelect<T extends string>({ id, value, options, onChange }: FormSelectProps<T>) {

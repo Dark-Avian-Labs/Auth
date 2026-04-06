@@ -13,7 +13,10 @@
       if (!part) return '';
       try {
         return decodeURIComponent(part.slice(name.length + 1));
-      } catch {
+      } catch (e) {
+        if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
+          console.warn('Failed to decode cookie "' + name + '"; treating as empty value.', e);
+        }
         return '';
       }
     }
@@ -47,5 +50,9 @@
     if (ui !== 'prism' && ui !== 'shadow') ui = 'prism';
     root.classList.remove('ui-prism', 'ui-shadow');
     root.classList.add('ui-' + ui);
-  } catch {}
+  } catch (e) {
+    if (typeof console !== 'undefined' && console && typeof console.error === 'function') {
+      console.error('Error during theme initialization.', e);
+    }
+  }
 })();

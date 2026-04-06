@@ -75,9 +75,8 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
         top: menuPos.top,
         left: menuPos.left,
         width: menuPos.width,
-        zIndex: 'var(--z-dropdown)',
       }}
-      className="border-glass-border bg-glass-hover/95 max-h-60 overflow-auto rounded-lg border p-1 shadow-[var(--shadow-panel)] backdrop-blur-md"
+      className="border-glass-border bg-glass-hover/95 z-dropdown max-h-60 overflow-auto rounded-lg border p-1 shadow-[var(--shadow-panel)] backdrop-blur-md"
     >
       {options.map((opt) => (
         <li key={opt.value} role="presentation">
@@ -120,12 +119,12 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
           }
         }}
       >
-        <span className="min-w-0 truncate">{current?.label}</span>
+        <span className="min-w-0 truncate">{current?.label ?? 'Select an option'}</span>
         <svg
           className={clsx('text-muted h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')}
           viewBox="0 0 20 20"
           fill="currentColor"
-          aria-hidden
+          aria-hidden={true}
         >
           <path
             fillRule="evenodd"

@@ -10,17 +10,18 @@
         .find(function (p) {
           return p.substring(0, name.length + 1) === name + '=';
         });
-      if (!part) return '';
+      if (!part) return null;
       try {
         return decodeURIComponent(part.slice(name.length + 1));
       } catch (e) {
         if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
-          console.warn('Failed to decode cookie "' + name + '"; treating as empty value.', e);
+          console.warn('Failed to decode cookie "' + name + '"; treating as missing value.', e);
         }
-        return '';
+        return null;
       }
     }
-    var theme = readCookie('dal.theme.mode').trim();
+    var theme = String(readCookie('dal.theme.mode')).trim();
+    var theme = themeCookie != null ? themeCookie.trim() : '';
     if (theme !== 'light' && theme !== 'dark') {
       try {
         theme = (localStorage.getItem('dal.theme.mode') || '').trim();
@@ -35,7 +36,8 @@
     root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
     root.classList.toggle('dark', theme === 'dark');
 
-    var ui = readCookie('dal.ui.style').trim();
+    var ui = String(readCookie('dal.ui.style')).trim();
+    var ui = uiCookie != null ? uiCookie.trim() : '';
     if (ui !== 'prism' && ui !== 'shadow') {
       try {
         ui = (localStorage.getItem('dal.ui.style') || '').trim();

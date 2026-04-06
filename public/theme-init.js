@@ -20,7 +20,7 @@
         return null;
       }
     }
-    var theme = String(readCookie('dal.theme.mode')).trim();
+    var themeCookie = readCookie('dal.theme.mode');
     var theme = themeCookie != null ? themeCookie.trim() : '';
     if (theme !== 'light' && theme !== 'dark') {
       try {
@@ -36,7 +36,7 @@
     root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
     root.classList.toggle('dark', theme === 'dark');
 
-    var ui = String(readCookie('dal.ui.style')).trim();
+    var uiCookie = readCookie('dal.ui.style');
     var ui = uiCookie != null ? uiCookie.trim() : '';
     if (ui !== 'prism' && ui !== 'shadow') {
       try {

@@ -33,8 +33,7 @@
     }
     if (theme !== 'light' && theme !== 'dark') theme = 'dark';
     root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
-    root.classList.remove('dark');
-    if (theme === 'dark') root.classList.add('dark');
+    root.classList.toggle('dark', theme === 'dark');
 
     var ui = readCookie('dal.ui.style').trim();
     if (ui !== 'prism' && ui !== 'shadow') {

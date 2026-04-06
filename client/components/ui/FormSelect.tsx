@@ -15,6 +15,7 @@ type FormSelectProps<T extends string> = {
 };
 
 const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
+const WINDOW_RESIZE_LISTENERS: AddEventListenerOptions = { passive: true };
 
 export function FormSelect<T extends string>({ id, value, options, onChange }: FormSelectProps<T>) {
   const listboxId = useId();
@@ -38,10 +39,10 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
   useLayoutEffect(() => {
     if (!open) return;
     updateMenuPosition();
-    window.addEventListener('resize', updateMenuPosition, { passive: true });
+    window.addEventListener('resize', updateMenuPosition, WINDOW_RESIZE_LISTENERS);
     window.addEventListener('scroll', updateMenuPosition, WINDOW_REPOSITION_LISTENERS);
     return () => {
-      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('resize', updateMenuPosition, WINDOW_RESIZE_LISTENERS);
       window.removeEventListener('scroll', updateMenuPosition, WINDOW_REPOSITION_LISTENERS);
     };
   }, [open, updateMenuPosition]);

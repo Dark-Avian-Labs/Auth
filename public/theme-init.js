@@ -21,7 +21,7 @@
       }
     }
     var themeCookie = readCookie('dal.theme.mode');
-    var theme = themeCookie != null ? themeCookie.trim() : '';
+    var theme = themeCookie !== null ? themeCookie.trim() : '';
     if (theme !== 'light' && theme !== 'dark') {
       try {
         theme = (localStorage.getItem('dal.theme.mode') || '').trim();
@@ -37,7 +37,7 @@
     root.classList.toggle('dark', theme === 'dark');
 
     var uiCookie = readCookie('dal.ui.style');
-    var ui = uiCookie != null ? uiCookie.trim() : '';
+    var ui = uiCookie !== null ? uiCookie.trim() : '';
     if (ui !== 'prism' && ui !== 'shadow') {
       try {
         ui = (localStorage.getItem('dal.ui.style') || '').trim();

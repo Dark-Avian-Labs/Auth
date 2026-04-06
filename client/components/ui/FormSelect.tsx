@@ -25,7 +25,7 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
   const menuRef = useRef<HTMLUListElement>(null);
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 0 });
 
-  const current = options.find((o) => o.value === value) ?? options[0];
+  const current = options.find((o) => o.value === value);
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -50,7 +50,11 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
   useEffect(() => {
     if (!open) return;
     const onDocPointer = (e: MouseEvent | PointerEvent) => {
-      const target = e.target as Node;
+      const target = e.target;
+      if (!target || !(target instanceof Node)) {
+        close();
+        return;
+      }
       if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       close();
     };

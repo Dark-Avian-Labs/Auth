@@ -20,35 +20,58 @@
         return null;
       }
     }
-    var themeCookie = readCookie('dal.theme.mode');
-    var theme = themeCookie !== null ? themeCookie.trim() : '';
-    if (theme !== 'light' && theme !== 'dark') {
-      try {
-        theme = (localStorage.getItem('dal.theme.mode') || '').trim();
-      } catch (e) {
-        if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
-          console.warn('Unable to read theme from localStorage; falling back to default.', e);
-        }
-        theme = '';
+
+    /**
+     * @param {string} cookieName
+     * @param {string} storageKey
+     * @param {string[]} allowed
+     * @param {string} defaultValue
+     * @param {string} storageErrorMessage
+     */
+    function readPreference(cookieName, storageKey, allowed, defaultValue, storageErrorMessage) {
+      var raw = readCookie(cookieName);
+      var value = '';
+      if (raw != null && raw !== '') {
+        value = String(raw).trim();
       }
+      if (allowed.indexOf(value) === -1) {
+        try {
+          var fromStorage = localStorage.getItem(storageKey);
+          if (fromStorage != null && fromStorage !== '') {
+            value = String(fromStorage).trim();
+          } else {
+            value = '';
+          }
+        } catch (e) {
+          if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
+            console.warn(storageErrorMessage, e);
+          }
+          value = '';
+        }
+      }
+      if (allowed.indexOf(value) === -1) {
+        value = defaultValue;
+      }
+      return value;
     }
-    if (theme !== 'light' && theme !== 'dark') theme = 'dark';
+
+    var theme = readPreference(
+      'dal.theme.mode',
+      'dal.theme.mode',
+      ['light', 'dark'],
+      'dark',
+      'Unable to read theme from localStorage; falling back to default.',
+    );
     root.style.colorScheme = theme === 'dark' ? 'dark' : 'light';
     root.classList.toggle('dark', theme === 'dark');
 
-    var uiCookie = readCookie('dal.ui.style');
-    var ui = uiCookie !== null ? uiCookie.trim() : '';
-    if (ui !== 'prism' && ui !== 'shadow') {
-      try {
-        ui = (localStorage.getItem('dal.ui.style') || '').trim();
-      } catch (e) {
-        if (typeof console !== 'undefined' && console && typeof console.warn === 'function') {
-          console.warn('Unable to read UI style from localStorage; falling back to default.', e);
-        }
-        ui = '';
-      }
-    }
-    if (ui !== 'prism' && ui !== 'shadow') ui = 'prism';
+    var ui = readPreference(
+      'dal.ui.style',
+      'dal.ui.style',
+      ['prism', 'shadow'],
+      'prism',
+      'Unable to read UI style from localStorage; falling back to default.',
+    );
     root.classList.remove('ui-prism', 'ui-shadow');
     root.classList.add('ui-' + ui);
   } catch (e) {

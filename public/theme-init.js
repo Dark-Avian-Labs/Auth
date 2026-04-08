@@ -21,13 +21,6 @@
       }
     }
 
-    /**
-     * @param {string} cookieName
-     * @param {string} storageKey
-     * @param {string[]} allowed
-     * @param {string} defaultValue
-     * @param {string} storageErrorMessage
-     */
     function readPreference(cookieName, storageKey, allowed, defaultValue, storageErrorMessage) {
       var raw = readCookie(cookieName);
       var value = '';

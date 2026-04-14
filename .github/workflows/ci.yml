@@ -15,6 +15,7 @@ on:
       - 'client/**'
       - 'index.html'
       - 'package.json'
+      - 'pnpm-workspace.yaml'
       - 'dark-avian-labs.config.cjs'
       - 'tsconfig*.json'
       - 'vite.config.ts'
@@ -224,7 +225,7 @@ jobs:
         run: |
           mkdir -p /tmp/deploy
           cp -r dist/ /tmp/deploy/
-          cp package.json pnpm-lock.yaml /tmp/deploy/
+          cp package.json pnpm-lock.yaml pnpm-workspace.yaml /tmp/deploy/
           if [ -f .env.production ]; then cp .env.production /tmp/deploy/; fi
           if [ -f favicon.ico ]; then cp favicon.ico /tmp/deploy/; fi
           if [ -f feathers.png ]; then cp feathers.png /tmp/deploy/; fi

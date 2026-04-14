@@ -37,10 +37,15 @@ function normalizeUsersSchema(): void {
   }>;
   if (rows.length === 0) return;
 
+  const hasPasswordHash = rows.some((row) => row.name === 'password_hash');
   const hasDisplayName = rows.some((row) => row.name === 'display_name');
   const hasEmail = rows.some((row) => row.name === 'email');
   const hasAvatar = rows.some((row) => row.name === 'avatar');
 
+  // Empty hash: login fails until the user resets password (argon2.verify rejects it).
+  if (!hasPasswordHash) {
+    db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''");
+  }
   if (!hasDisplayName) {
     db.exec("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
   }
@@ -73,6 +78,13 @@ export function createSchema(): void {
       markMigration('20260301_users_profile_columns');
     });
     migrateUsersProfileColumns();
+  }
+  if (!hasMigration('20260415_users_password_hash_column')) {
+    const migratePasswordHashColumn = db.transaction(() => {
+      normalizeUsersSchema();
+      markMigration('20260415_users_password_hash_column');
+    });
+    migratePasswordHashColumn();
   }
   if (!hasMigration('20260301_sessions_expire_column')) {
     const migrateSessionsExpireColumn = db.transaction(() => {

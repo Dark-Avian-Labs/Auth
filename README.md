@@ -73,7 +73,7 @@ Server and client read from `.env.production` / `.env.development` / `.env.test`
 | `BASE_DOMAIN`                | Required. Apex domain used to build per-app URLs (e.g. `example.com`).             |
 | `BASE_PROTOCOL`              | `http` or `https` (default: `https` in production, `http` otherwise).              |
 | `AUTH_SUBDOMAIN`             | Subdomain for this service (default: `auth`). Builds public auth base URL.         |
-| `APP_LIST`                   | Comma-separated app ids (`corpus`, `parametric`, …); drives allowed app origins.   |
+| `APP_LIST`                   | Comma-separated app ids (`codex`, `armory`, …); drives allowed app origins.        |
 | `COOKIE_DOMAIN`              | Cookie domain for shared session (default: `.<BASE_DOMAIN>`).                      |
 | `AUTH_COOKIE_DOMAIN`         | Override for auth cookies (defaults to `COOKIE_DOMAIN`).                           |
 | `AUTH_COOKIE_NAME`           | Auth session cookie name.                                                          |

@@ -527,26 +527,19 @@ export function AdminPage() {
                         >
                           Change password
                         </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-8 px-3 text-xs"
-                          onClick={(event) =>
-                            openPermissionsModal(user, 'parametric', event.currentTarget)
-                          }
-                        >
-                          Param perms
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="h-8 px-3 text-xs"
-                          onClick={(event) =>
-                            openPermissionsModal(user, 'corpus', event.currentTarget)
-                          }
-                        >
-                          Corpus perms
-                        </Button>
+                        {availableApps.map((appId) => (
+                          <Button
+                            key={`${user.id}-perms-${appId}`}
+                            type="button"
+                            variant="secondary"
+                            className="h-8 px-3 text-xs"
+                            onClick={(event) =>
+                              openPermissionsModal(user, appId, event.currentTarget)
+                            }
+                          >
+                            {appId} perms
+                          </Button>
+                        ))}
                         {auth.user?.id !== user.id ? (
                           <Button
                             type="button"

@@ -41,14 +41,6 @@ export const SEARCH_PLACEHOLDER = readTrimmedEnv(
   'Search users...',
 );
 
-const isProductionBuild = import.meta.env.MODE === 'production';
-const authAdminFallback = isProductionBuild ? '/admin' : 'http://localhost:3000/admin';
-
-export const AUTH_ADMIN_URL = readTrimmedEnv(
-  import.meta.env.VITE_AUTH_ADMIN_URL as string | undefined,
-  authAdminFallback,
-);
-
 export const ALLOWED_NEXT_ORIGINS = readCsvEnv(
   import.meta.env.VITE_ALLOWED_NEXT_ORIGINS as string | undefined,
 );

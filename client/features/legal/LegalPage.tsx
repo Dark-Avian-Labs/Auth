@@ -220,10 +220,66 @@ export function LegalPage() {
             Copyright for Third-Party Content
           </h3>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Header font &quot;Inter&quot; - The Inter Project Authors</li>
-            <li>Profile Icons - Vecteezy.com</li>
-            <li>General legal text - Kanzlei Hasselbach</li>
-            <li>GDPR text - Dr. Thomas Schwenke</li>
+            <li>
+              Fonts:{' '}
+              <a
+                className="text-foreground underline underline-offset-2"
+                href="https://github.com/rsms/inter"
+                aria-label="Inter font on GitHub, opens in new tab"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Inter
+              </a>{' '}
+              (The Inter Project Authors) and{' '}
+              <a
+                className="text-foreground underline underline-offset-2"
+                href="https://github.com/vercel/geist-font"
+                aria-label="Geist font on GitHub, opens in new tab"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Geist
+              </a>{' '}
+              (Geist Sans and Geist Mono; Vercel and contributors). Both are licensed under the SIL
+              Open Font License (OFL-1.1).
+            </li>
+            <li>
+              Profile icons:{' '}
+              <a
+                className="text-foreground underline underline-offset-2"
+                href="https://www.vecteezy.com/"
+                aria-label="Vecteezy, opens in new tab"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Vecteezy
+              </a>
+            </li>
+            <li>
+              General legal text:{' '}
+              <a
+                className="text-foreground underline underline-offset-2"
+                href="https://www.kanzlei-hasselbach.de/"
+                aria-label="Kanzlei Hasselbach website, opens in new tab"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Kanzlei Hasselbach
+              </a>
+            </li>
+            <li>
+              GDPR text:{' '}
+              <a
+                className="text-foreground underline underline-offset-2"
+                href="https://drschwenke.de/"
+                aria-label="Kanzlei Dr. Thomas Schwenke website, opens in new tab"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Dr. Thomas Schwenke
+              </a>
+            </li>
           </ul>
         </section>
       </GlassCard>

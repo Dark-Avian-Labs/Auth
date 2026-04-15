@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/inter';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -7,6 +9,11 @@
 @source '../../index.html';
 
 @theme {
+  --font-sans:
+    'Geist Variable', Geist, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  --font-mono:
+    'Geist Mono Variable', 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
   --color-foreground: oklch(98.4% 0.004 264);
   --color-muted: oklch(82% 0.015 286);
 
@@ -23,6 +30,8 @@
 }
 
 :root {
+  --font-brand:
+    'Inter Variable', Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
   --color-foreground: oklch(98.4% 0.004 264);
   --color-muted: oklch(82% 0.015 286);
   --color-accent: oklch(56% 0.24 278);
@@ -102,15 +111,7 @@ html.ui-shadow:not(.dark) {
       radial-gradient(circle at 10% 10%, var(--color-bg-glow), transparent 40%),
       radial-gradient(circle at 85% 15%, var(--color-bg-glow), transparent 45%),
       linear-gradient(to bottom, var(--color-bg-start) 0%, var(--color-bg-end) 100%);
-    font-family:
-      'Inter Variable',
-      Inter,
-      system-ui,
-      -apple-system,
-      'Segoe UI',
-      Roboto,
-      Arial,
-      sans-serif;
+    font-family: var(--font-sans);
   }
 
   #root {
@@ -179,6 +180,7 @@ html.ui-shadow:not(.dark) {
   }
 
   .brand-lockup__title {
+    font-family: var(--font-brand);
     font-size: clamp(1.35rem, 2.4vw, 2.25rem);
     font-weight: 600;
     letter-spacing: 0.1em;

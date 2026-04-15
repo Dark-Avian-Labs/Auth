@@ -42,7 +42,6 @@ function normalizeUsersSchema(): void {
   const hasEmail = rows.some((row) => row.name === 'email');
   const hasAvatar = rows.some((row) => row.name === 'avatar');
 
-  // Empty hash: login fails until the user resets password (argon2.verify rejects it).
   if (!hasPasswordHash) {
     db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''");
   }

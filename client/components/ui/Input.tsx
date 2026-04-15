@@ -1,13 +1,11 @@
-import { forwardRef, type InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, Ref } from 'react';
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   readOnlyStyle?: boolean;
+  ref?: Ref<HTMLInputElement>;
 }
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { readOnlyStyle, className, ...props },
-  ref,
-) {
+export function Input({ readOnlyStyle, className, ref, ...props }: InputProps) {
   const classes = ['form-input'];
   const useReadOnlyClass = Boolean(readOnlyStyle);
   if (useReadOnlyClass) {
@@ -17,4 +15,4 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
     classes.push(className);
   }
   return <input {...props} ref={ref} readOnly={props.readOnly} className={classes.join(' ')} />;
-});
+}

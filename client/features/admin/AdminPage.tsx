@@ -31,7 +31,9 @@ function toPermissionPayload(value: string): string[] {
 
 export function AdminPage() {
   const { auth } = useAuth();
-  const availableApps = AVAILABLE_APPS ?? [];
+  const fallbackApps = AVAILABLE_APPS ?? [];
+  /** Prefer server `app_ids` so admin matches APP_LIST even if the client bundle has stale VITE_AVAILABLE_APPS. */
+  const [adminAppIds, setAdminAppIds] = useState<string[]>(fallbackApps);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,13 +90,19 @@ export function AdminPage() {
         const response = await apiFetch('/api/admin/users');
         const body = (await response.json()) as {
           users?: AdminUser[];
+          app_ids?: string[];
           error?: string;
         };
         if (!response.ok) {
           if (!cancelled) setError(body.error || 'Failed to load users.');
           return;
         }
-        if (!cancelled) setUsers(Array.isArray(body.users) ? body.users : []);
+        if (!cancelled) {
+          setUsers(Array.isArray(body.users) ? body.users : []);
+          if (Array.isArray(body.app_ids) && body.app_ids.length > 0) {
+            setAdminAppIds(body.app_ids);
+          }
+        }
       } catch {
         if (!cancelled) setError('Failed to load users.');
       } finally {
@@ -157,9 +165,12 @@ export function AdminPage() {
         return;
       }
 
-      const body = (await response.json()) as { users?: AdminUser[] };
+      const body = (await response.json()) as { users?: AdminUser[]; app_ids?: string[] };
       if (Array.isArray(body.users)) {
         setUsers(body.users);
+      }
+      if (Array.isArray(body.app_ids) && body.app_ids.length > 0) {
+        setAdminAppIds(body.app_ids);
       }
     } catch (caught) {
       console.error('Error while refreshing users.', caught);
@@ -483,7 +494,7 @@ export function AdminPage() {
                     <td className="px-4 py-3">{user.username}</td>
                     <td className="px-4 py-3">{user.is_admin ? 'Admin' : 'User'}</td>
                     <td className="px-4 py-3">
-                      {availableApps.map((appId) => {
+                      {adminAppIds.map((appId) => {
                         const hasAccess = user.app_access.includes(appId);
                         return (
                           <button
@@ -527,7 +538,7 @@ export function AdminPage() {
                         >
                           Change password
                         </Button>
-                        {availableApps.map((appId) => (
+                        {adminAppIds.map((appId) => (
                           <Button
                             key={`${user.id}-perms-${appId}`}
                             type="button"
@@ -732,7 +743,8 @@ export function AdminPage() {
                 Permissions for {permissionsUser.username} on {permissionsAppId}
               </h2>
               <label htmlFor={permissionsInputId} className="text-muted mt-3 block text-sm">
-                Comma-separated permissions
+                Comma-separated permission names (not app-prefixed). Allowed: read, write, create,
+                update, delete, admin — e.g. &quot;read,write&quot;
               </label>
               <Input
                 id={permissionsInputId}

@@ -68,7 +68,7 @@ adminApiRouter.get('/users', (_req: Request, res: Response) => {
     app_access: gamesByUserId[user.id] ?? [],
     permissions: permissionsByUserId[user.id] ?? [],
   }));
-  res.json({ users: payload });
+  res.json({ users: payload, app_ids: [...APP_LIST] });
 });
 
 adminApiRouter.post('/users', async (req: Request, res: Response, next: NextFunction) => {

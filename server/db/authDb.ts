@@ -31,67 +31,8 @@ function markMigration(id: string): void {
   db.prepare('INSERT OR IGNORE INTO schema_migrations (id) VALUES (?)').run(id);
 }
 
-function normalizeUsersSchema(): void {
-  const rows = db.prepare('PRAGMA table_info(users)').all() as Array<{
-    name: string;
-  }>;
-  if (rows.length === 0) return;
-
-  const hasPasswordHash = rows.some((row) => row.name === 'password_hash');
-  const hasDisplayName = rows.some((row) => row.name === 'display_name');
-  const hasEmail = rows.some((row) => row.name === 'email');
-  const hasAvatar = rows.some((row) => row.name === 'avatar');
-
-  if (!hasPasswordHash) {
-    db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT NOT NULL DEFAULT ''");
-  }
-  if (!hasDisplayName) {
-    db.exec("ALTER TABLE users ADD COLUMN display_name TEXT NOT NULL DEFAULT ''");
-  }
-  if (!hasEmail) {
-    db.exec("ALTER TABLE users ADD COLUMN email TEXT NOT NULL DEFAULT ''");
-  }
-  if (!hasAvatar) {
-    db.exec('ALTER TABLE users ADD COLUMN avatar INTEGER NOT NULL DEFAULT 1');
-  }
-}
-
-function normalizeSessionsSchema(): void {
-  const rows = db.prepare('PRAGMA table_info(sessions)').all() as Array<{
-    name: string;
-  }>;
-  if (rows.length === 0) return;
-
-  const hasExpire = rows.some((row) => row.name === 'expire');
-  const hasExpired = rows.some((row) => row.name === 'expired');
-  if (!hasExpire && hasExpired) {
-    db.exec('ALTER TABLE sessions RENAME COLUMN expired TO expire');
-  }
-}
-
 export function createSchema(): void {
   ensureMigrationTable();
-  if (!hasMigration('20260301_users_profile_columns')) {
-    const migrateUsersProfileColumns = db.transaction(() => {
-      normalizeUsersSchema();
-      markMigration('20260301_users_profile_columns');
-    });
-    migrateUsersProfileColumns();
-  }
-  if (!hasMigration('20260415_users_password_hash_column')) {
-    const migratePasswordHashColumn = db.transaction(() => {
-      normalizeUsersSchema();
-      markMigration('20260415_users_password_hash_column');
-    });
-    migratePasswordHashColumn();
-  }
-  if (!hasMigration('20260301_sessions_expire_column')) {
-    const migrateSessionsExpireColumn = db.transaction(() => {
-      normalizeSessionsSchema();
-      markMigration('20260301_sessions_expire_column');
-    });
-    migrateSessionsExpireColumn();
-  }
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

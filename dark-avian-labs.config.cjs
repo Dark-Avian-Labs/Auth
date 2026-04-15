@@ -38,8 +38,8 @@ module.exports = {
     },
     {
       ...baseApp,
-      name: 'Corpus',
-      cwd: path.join(APPS_ROOT, 'corpus'),
+      name: 'Codex',
+      cwd: path.join(APPS_ROOT, 'codex'),
       env: {
         ...baseApp.env,
         PORT: '3001',
@@ -47,8 +47,8 @@ module.exports = {
     },
     {
       ...baseApp,
-      name: 'Parametric',
-      cwd: path.join(APPS_ROOT, 'parametric'),
+      name: 'Armory',
+      cwd: path.join(APPS_ROOT, 'armory'),
       env: {
         ...baseApp.env,
         PORT: '3002',

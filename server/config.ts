@@ -119,7 +119,7 @@ function buildSubdomainUrl(subdomain: string): string {
 
 export const AUTH_PUBLIC_BASE_URL = buildSubdomainUrl(AUTH_SUBDOMAIN);
 
-export const APP_LIST = (process.env.APP_LIST || 'parametric,corpus')
+export const APP_LIST = (process.env.APP_LIST || 'armory,codex')
   .split(',')
   .map((value) => value.trim().toLowerCase())
   .filter((value, idx, arr) => value.length > 0 && arr.indexOf(value) === idx);

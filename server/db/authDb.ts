@@ -143,6 +143,32 @@ export function createSchema(): void {
     CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
       ON audit_log(created_at);
   `);
+  if (!hasMigration('20260416_rename_apps_corpus_parametric')) {
+    const renameAppIds = db.transaction(() => {
+      db.prepare(
+        `INSERT OR IGNORE INTO user_game_access (user_id, game_id)
+         SELECT user_id, 'codex' FROM user_game_access WHERE game_id = 'corpus'`,
+      ).run();
+      db.prepare(`DELETE FROM user_game_access WHERE game_id = 'corpus'`).run();
+      db.prepare(
+        `INSERT OR IGNORE INTO user_game_access (user_id, game_id)
+         SELECT user_id, 'armory' FROM user_game_access WHERE game_id = 'parametric'`,
+      ).run();
+      db.prepare(`DELETE FROM user_game_access WHERE game_id = 'parametric'`).run();
+      db.prepare(
+        `INSERT OR IGNORE INTO user_app_permissions (user_id, app_id, permission)
+         SELECT user_id, 'codex', permission FROM user_app_permissions WHERE app_id = 'corpus'`,
+      ).run();
+      db.prepare(`DELETE FROM user_app_permissions WHERE app_id = 'corpus'`).run();
+      db.prepare(
+        `INSERT OR IGNORE INTO user_app_permissions (user_id, app_id, permission)
+         SELECT user_id, 'armory', permission FROM user_app_permissions WHERE app_id = 'parametric'`,
+      ).run();
+      db.prepare(`DELETE FROM user_app_permissions WHERE app_id = 'parametric'`).run();
+      markMigration('20260416_rename_apps_corpus_parametric');
+    });
+    renameAppIds();
+  }
 }
 
 export type UserRow = {

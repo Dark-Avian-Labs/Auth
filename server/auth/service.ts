@@ -12,12 +12,12 @@ import {
 import { db, getGamesForUser, getUserById, type UserRow } from '../db/authDb.js';
 
 export const APP_META_BY_ID: Record<string, { label: string; subtitle: string }> = {
-  parametric: {
-    label: 'Parametric',
+  armory: {
+    label: 'Armory',
     subtitle: 'Build planning and management',
   },
-  corpus: {
-    label: 'Corpus',
+  codex: {
+    label: 'Codex',
     subtitle: 'Collection tracking',
   },
 };

@@ -22,7 +22,6 @@ interface AdminUser {
   permissions: PermissionEntry[];
 }
 
-/** Must match server/routes/adminApi.ts ALLOWED_PERMISSIONS */
 const PERMISSION_COLUMNS = ['read', 'write', 'create', 'update', 'delete', 'admin'] as const;
 
 const DEFAULT_CODEX_MODULES = ['warframe', 'epic7'];
@@ -62,7 +61,6 @@ function permsListsEqual(a: string[], b: string[]): boolean {
 export function AdminPage() {
   const { auth } = useAuth();
   const fallbackApps = AVAILABLE_APPS ?? [];
-  /** Prefer server `app_ids` so admin matches APP_LIST even if the client bundle has stale VITE_AVAILABLE_APPS. */
   const [adminAppIds, setAdminAppIds] = useState<string[]>(fallbackApps);
   const [codexModuleIds, setCodexModuleIds] = useState<string[]>(DEFAULT_CODEX_MODULES);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -110,8 +108,9 @@ export function AdminPage() {
 
   const codexModuleSet = new Set(codexModuleIds);
   const standaloneAppIds = adminAppIds.filter((id) => id !== 'codex' && !codexModuleSet.has(id));
-  const codexModulesInList = codexModuleIds.filter((m) => adminAppIds.includes(m));
-  const codexGroupVisible = adminAppIds.includes('codex') || codexModulesInList.length > 0;
+  const codexGroupVisible = adminAppIds.includes('codex') || codexModuleIds.length > 0;
+
+  const isAppManageable = (appId: string) => adminAppIds.includes(appId);
 
   useEffect(() => {
     let cancelled = false;
@@ -229,7 +228,8 @@ export function AdminPage() {
   const initMatrixDraft = (user: AdminUser) => {
     const access: Record<string, boolean> = {};
     const perms: Record<string, string[]> = {};
-    for (const id of adminAppIds) {
+    const ids = new Set<string>([...adminAppIds, ...codexModuleIds]);
+    for (const id of ids) {
       access[id] = user.app_access.includes(id);
       perms[id] = permissionsForApp(user, id);
     }
@@ -258,6 +258,7 @@ export function AdminPage() {
   };
 
   const setAccess = (appId: string, enabled: boolean) => {
+    if (!isAppManageable(appId)) return;
     setMatrixAccess((prev) => ({ ...prev, [appId]: enabled }));
     if (!enabled) {
       setMatrixPerms((prev) => ({ ...prev, [appId]: [] }));
@@ -265,6 +266,7 @@ export function AdminPage() {
   };
 
   const togglePerm = (appId: string, perm: string) => {
+    if (!isAppManageable(appId)) return;
     if (!matrixAccess[appId]) return;
     setMatrixPerms((prev) => {
       const cur = prev[appId] ?? [];
@@ -474,9 +476,10 @@ export function AdminPage() {
     });
   };
 
-  function renderPermissionMatrix(appId: string) {
+  function renderPermissionMatrix(appId: string, manageable: boolean) {
     const on = matrixAccess[appId] === true;
     const list = matrixPerms[appId] ?? [];
+    const canEdit = manageable && on;
     return (
       <div className="mt-3 overflow-x-auto rounded border border-white/10 bg-black/20 p-2">
         <table className="w-full min-w-[320px] border-collapse text-center text-xs">
@@ -497,7 +500,7 @@ export function AdminPage() {
                   <td key={col} className="p-1 align-middle">
                     <button
                       type="button"
-                      disabled={!on || matrixSubmitting}
+                      disabled={!canEdit || matrixSubmitting}
                       className={`min-h-[2rem] w-full min-w-[2.25rem] rounded border px-1 py-1 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                         has
                           ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
@@ -520,28 +523,38 @@ export function AdminPage() {
 
   function renderAppBlock(appId: string, label: string, indent: boolean) {
     const on = matrixAccess[appId] === true;
+    const manageable = isAppManageable(appId);
     return (
       <div
         className={`border-t border-white/10 py-4 first:border-t-0 first:pt-0 ${indent ? 'ml-1 border-l border-white/10 pl-4' : ''}`}
       >
         <div className="flex flex-wrap items-center gap-3">
-          <label className="text-foreground flex cursor-pointer items-center gap-2 text-sm font-medium">
+          <label
+            className={`flex items-center gap-2 text-sm font-medium ${manageable ? 'text-foreground cursor-pointer' : 'text-foreground/80 cursor-default'}`}
+          >
             <input
               type="checkbox"
               className="rounded border-white/30"
               checked={on}
-              disabled={matrixSubmitting}
+              disabled={matrixSubmitting || !manageable}
               onChange={(e) => setAccess(appId, e.target.checked)}
             />
             <span>{label}</span>
           </label>
-          <span className="text-muted text-xs">{appId}</span>
+          <span className="text-muted font-mono text-xs">{appId}</span>
         </div>
+        {!manageable ? (
+          <p className="mt-2 text-xs text-amber-400/95">
+            Add <span className="font-mono">{appId}</span> to Auth{' '}
+            <span className="font-mono">APP_LIST</span> to edit access and permissions here (values
+            shown are current).
+          </p>
+        ) : null}
         {on ? (
-          renderPermissionMatrix(appId)
-        ) : (
+          renderPermissionMatrix(appId, manageable)
+        ) : manageable ? (
           <p className="text-muted mt-2 text-xs">Grant access to configure capabilities.</p>
-        )}
+        ) : null}
       </div>
     );
   }
@@ -837,11 +850,12 @@ export function AdminPage() {
                 Access & permissions — {matrixUser.username}
               </h2>
               <p className="text-muted mt-2 text-sm">
-                Toggle each app to grant access, then set capabilities. Games that belong to Codex
-                appear in the Codex section when their app ids are in Auth&apos;s app list and
-                module list (see server env{' '}
-                <span className="text-foreground/80">CODEX_MODULE_APP_IDS</span>, default warframe,
-                epic7).
+                Toggle each app to grant access, then set capabilities. Codex modules (games) are
+                listed under Codex; you can edit them only if each module id is also in Auth{' '}
+                <span className="text-foreground/80 font-mono">APP_LIST</span> (configure on the
+                server). Module ids come from{' '}
+                <span className="text-foreground/80 font-mono">CODEX_MODULE_APP_IDS</span> (default
+                warframe, epic7).
               </p>
 
               <div className="mt-6 space-y-2">
@@ -859,7 +873,7 @@ export function AdminPage() {
                     {adminAppIds.includes('codex')
                       ? renderAppBlock('codex', MODULE_LABELS.codex ?? 'Codex', false)
                       : null}
-                    {codexModulesInList.map((appId) => (
+                    {codexModuleIds.map((appId) => (
                       <div key={appId}>
                         {renderAppBlock(appId, MODULE_LABELS[appId] ?? appId, true)}
                       </div>

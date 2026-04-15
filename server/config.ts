@@ -132,7 +132,6 @@ for (const appId of APP_LIST) {
   }
 }
 
-/** Game modules hosted under the Codex app — used only for admin UI grouping (Auth). */
 export const CODEX_MODULE_APP_IDS = (process.env.CODEX_MODULE_APP_IDS || 'warframe,epic7')
   .split(',')
   .map((value) => value.trim().toLowerCase())

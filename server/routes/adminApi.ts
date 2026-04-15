@@ -2,7 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { rateLimit } from 'express-rate-limit';
 
 import { hashPassword, requestIp, requireAdmin, revokeSessionsForUser } from '../auth/service.js';
-import { APP_LIST } from '../config.js';
+import { APP_LIST, CODEX_MODULE_APP_IDS } from '../config.js';
 import {
   appendAuditLog,
   db,
@@ -68,7 +68,11 @@ adminApiRouter.get('/users', (_req: Request, res: Response) => {
     app_access: gamesByUserId[user.id] ?? [],
     permissions: permissionsByUserId[user.id] ?? [],
   }));
-  res.json({ users: payload });
+  res.json({
+    users: payload,
+    app_ids: [...APP_LIST],
+    codex_module_ids: [...CODEX_MODULE_APP_IDS],
+  });
 });
 
 adminApiRouter.post('/users', async (req: Request, res: Response, next: NextFunction) => {

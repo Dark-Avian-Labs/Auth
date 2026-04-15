@@ -22,16 +22,49 @@ interface AdminUser {
   permissions: PermissionEntry[];
 }
 
-function toPermissionPayload(value: string): string[] {
-  return value
-    .split(',')
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
+/** Must match server/routes/adminApi.ts ALLOWED_PERMISSIONS */
+const PERMISSION_COLUMNS = ['read', 'write', 'create', 'update', 'delete', 'admin'] as const;
+
+const DEFAULT_CODEX_MODULES = ['warframe', 'epic7'];
+
+const MODULE_LABELS: Record<string, string> = {
+  warframe: 'Warframe',
+  epic7: 'Epic 7',
+  codex: 'Codex',
+};
+
+function cloneAdminUser(user: AdminUser): AdminUser {
+  return {
+    ...user,
+    app_access: [...user.app_access],
+    permissions: user.permissions.map((p) => ({ ...p })),
+  };
+}
+
+function permissionsForApp(user: AdminUser, appId: string): string[] {
+  return user.permissions
+    .filter((e) => e.app_id === appId)
+    .map((e) => e.permission)
+    .sort();
+}
+
+function sortedCopy(list: string[]): string[] {
+  return [...list].sort();
+}
+
+function permsListsEqual(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  const x = sortedCopy(a);
+  const y = sortedCopy(b);
+  return x.every((v, i) => v === y[i]);
 }
 
 export function AdminPage() {
   const { auth } = useAuth();
-  const availableApps = AVAILABLE_APPS ?? [];
+  const fallbackApps = AVAILABLE_APPS ?? [];
+  /** Prefer server `app_ids` so admin matches APP_LIST even if the client bundle has stale VITE_AVAILABLE_APPS. */
+  const [adminAppIds, setAdminAppIds] = useState<string[]>(fallbackApps);
+  const [codexModuleIds, setCodexModuleIds] = useState<string[]>(DEFAULT_CODEX_MODULES);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersError, setUsersError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -43,16 +76,17 @@ export function AdminPage() {
   const [passwordUser, setPasswordUser] = useState<AdminUser | null>(null);
   const [passwordValue, setPasswordValue] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
-  const [permissionsUser, setPermissionsUser] = useState<AdminUser | null>(null);
-  const [permissionsAppId, setPermissionsAppId] = useState<string | null>(null);
-  const [permissionsValue, setPermissionsValue] = useState('');
-  const [permissionsValidationError, setPermissionsValidationError] = useState<string | null>(null);
-  const [permissionsSubmitting, setPermissionsSubmitting] = useState(false);
+
+  const [matrixUser, setMatrixUser] = useState<AdminUser | null>(null);
+  const [matrixAccess, setMatrixAccess] = useState<Record<string, boolean>>({});
+  const [matrixPerms, setMatrixPerms] = useState<Record<string, string[]>>({});
+  const [matrixSubmitting, setMatrixSubmitting] = useState(false);
+  const matrixBaselineRef = useRef<AdminUser | null>(null);
+
   const passwordInputId = 'admin-password-input';
-  const permissionsInputId = 'admin-permissions-input';
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const passwordModalRef = useRef<HTMLDivElement | null>(null);
-  const permissionsModalRef = useRef<HTMLDivElement | null>(null);
+  const matrixModalRef = useRef<HTMLDivElement | null>(null);
 
   const getPasswordModalFocusableElements = () => {
     const modalElement = passwordModalRef.current;
@@ -64,8 +98,8 @@ export function AdminPage() {
     return Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));
   };
 
-  const getPermissionsModalFocusableElements = () => {
-    const modalElement = permissionsModalRef.current;
+  const getMatrixModalFocusableElements = () => {
+    const modalElement = matrixModalRef.current;
     if (!modalElement) return [] as HTMLElement[];
 
     const focusableSelector =
@@ -73,6 +107,11 @@ export function AdminPage() {
 
     return Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));
   };
+
+  const codexModuleSet = new Set(codexModuleIds);
+  const standaloneAppIds = adminAppIds.filter((id) => id !== 'codex' && !codexModuleSet.has(id));
+  const codexModulesInList = codexModuleIds.filter((m) => adminAppIds.includes(m));
+  const codexGroupVisible = adminAppIds.includes('codex') || codexModulesInList.length > 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -88,13 +127,23 @@ export function AdminPage() {
         const response = await apiFetch('/api/admin/users');
         const body = (await response.json()) as {
           users?: AdminUser[];
+          app_ids?: string[];
+          codex_module_ids?: string[];
           error?: string;
         };
         if (!response.ok) {
           if (!cancelled) setError(body.error || 'Failed to load users.');
           return;
         }
-        if (!cancelled) setUsers(Array.isArray(body.users) ? body.users : []);
+        if (!cancelled) {
+          setUsers(Array.isArray(body.users) ? body.users : []);
+          if (Array.isArray(body.app_ids) && body.app_ids.length > 0) {
+            setAdminAppIds(body.app_ids);
+          }
+          if (Array.isArray(body.codex_module_ids) && body.codex_module_ids.length > 0) {
+            setCodexModuleIds(body.codex_module_ids);
+          }
+        }
       } catch {
         if (!cancelled) setError('Failed to load users.');
       } finally {
@@ -120,16 +169,16 @@ export function AdminPage() {
   }, [passwordUser]);
 
   useEffect(() => {
-    if (!permissionsUser) return;
+    if (!matrixUser) return;
 
-    const focusableElements = getPermissionsModalFocusableElements();
+    const focusableElements = getMatrixModalFocusableElements();
     if (focusableElements.length > 0) {
       focusableElements[0].focus();
       return;
     }
 
-    permissionsModalRef.current?.focus();
-  }, [permissionsUser]);
+    matrixModalRef.current?.focus();
+  }, [matrixUser]);
 
   if (auth.status !== 'ok') {
     return <Navigate to={APP_PATHS.login} replace />;
@@ -157,13 +206,125 @@ export function AdminPage() {
         return;
       }
 
-      const body = (await response.json()) as { users?: AdminUser[] };
+      const body = (await response.json()) as {
+        users?: AdminUser[];
+        app_ids?: string[];
+        codex_module_ids?: string[];
+      };
       if (Array.isArray(body.users)) {
         setUsers(body.users);
+      }
+      if (Array.isArray(body.app_ids) && body.app_ids.length > 0) {
+        setAdminAppIds(body.app_ids);
+      }
+      if (Array.isArray(body.codex_module_ids) && body.codex_module_ids.length > 0) {
+        setCodexModuleIds(body.codex_module_ids);
       }
     } catch (caught) {
       console.error('Error while refreshing users.', caught);
       setUsersError(caught instanceof Error ? caught.message : 'Failed to refresh users.');
+    }
+  };
+
+  const initMatrixDraft = (user: AdminUser) => {
+    const access: Record<string, boolean> = {};
+    const perms: Record<string, string[]> = {};
+    for (const id of adminAppIds) {
+      access[id] = user.app_access.includes(id);
+      perms[id] = permissionsForApp(user, id);
+    }
+    setMatrixAccess(access);
+    setMatrixPerms(perms);
+  };
+
+  const openMatrixModal = (user: AdminUser, trigger?: EventTarget | null) => {
+    if (trigger instanceof HTMLElement) {
+      previousFocusRef.current = trigger;
+    } else if (document.activeElement instanceof HTMLElement) {
+      previousFocusRef.current = document.activeElement;
+    } else {
+      previousFocusRef.current = null;
+    }
+    matrixBaselineRef.current = cloneAdminUser(user);
+    initMatrixDraft(user);
+    setMatrixUser(user);
+  };
+
+  const closeMatrixModal = () => {
+    setMatrixUser(null);
+    matrixBaselineRef.current = null;
+    setMatrixSubmitting(false);
+    previousFocusRef.current?.focus();
+  };
+
+  const setAccess = (appId: string, enabled: boolean) => {
+    setMatrixAccess((prev) => ({ ...prev, [appId]: enabled }));
+    if (!enabled) {
+      setMatrixPerms((prev) => ({ ...prev, [appId]: [] }));
+    }
+  };
+
+  const togglePerm = (appId: string, perm: string) => {
+    if (!matrixAccess[appId]) return;
+    setMatrixPerms((prev) => {
+      const cur = prev[appId] ?? [];
+      const has = cur.includes(perm);
+      const next = has ? cur.filter((p) => p !== perm) : [...cur, perm];
+      return { ...prev, [appId]: next };
+    });
+  };
+
+  const saveMatrixModal = async () => {
+    const baseline = matrixBaselineRef.current;
+    if (!matrixUser || !baseline) return;
+
+    setMatrixSubmitting(true);
+    setError(null);
+    setMessage(null);
+    try {
+      for (const appId of adminAppIds) {
+        const wasOn = baseline.app_access.includes(appId);
+        const nowOn = matrixAccess[appId] === true;
+        const wasPerms = permissionsForApp(baseline, appId);
+        const nowPerms = nowOn ? sortedCopy(matrixPerms[appId] ?? []) : [];
+
+        if (wasOn === nowOn && permsListsEqual(wasPerms, nowPerms)) {
+          continue;
+        }
+
+        const accessRes = await apiFetch(
+          `/api/admin/users/${matrixUser.id}/apps/${encodeURIComponent(appId)}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enabled: nowOn }),
+          },
+        );
+        if (!accessRes.ok) {
+          const body = (await accessRes.json().catch(() => null)) as { error?: string } | null;
+          setError(body?.error || `Failed to update access for ${appId}.`);
+          return;
+        }
+
+        const permRes = await apiFetch(`/api/admin/users/${matrixUser.id}/permissions`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ app_id: appId, permissions: nowPerms }),
+        });
+        if (!permRes.ok) {
+          const body = (await permRes.json().catch(() => null)) as { error?: string } | null;
+          setError(body?.error || `Failed to update permissions for ${appId}.`);
+          return;
+        }
+      }
+
+      setMessage('Access and permissions updated.');
+      closeMatrixModal();
+      await refreshUsers();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Network error while saving.');
+    } finally {
+      setMatrixSubmitting(false);
     }
   };
 
@@ -313,112 +474,77 @@ export function AdminPage() {
     });
   };
 
-  const updateAppAccess = async (user: AdminUser, appId: string, enabled: boolean) => {
-    setError(null);
-    setMessage(null);
-    try {
-      const response = await apiFetch(
-        `/api/admin/users/${user.id}/apps/${encodeURIComponent(appId)}`,
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ enabled }),
-        },
-      );
-      const body = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!response.ok) {
-        setError(body?.error || 'Failed to update app access.');
-        return;
-      }
-      setMessage('App access updated.');
-      await refreshUsers();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Network error updating app access.');
-    }
-  };
+  function renderPermissionMatrix(appId: string) {
+    const on = matrixAccess[appId] === true;
+    const list = matrixPerms[appId] ?? [];
+    return (
+      <div className="mt-3 overflow-x-auto rounded border border-white/10 bg-black/20 p-2">
+        <table className="w-full min-w-[320px] border-collapse text-center text-xs">
+          <thead>
+            <tr className="text-muted">
+              {PERMISSION_COLUMNS.map((col) => (
+                <th key={col} className="px-1 py-1 font-medium capitalize">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              {PERMISSION_COLUMNS.map((col) => {
+                const has = list.includes(col);
+                return (
+                  <td key={col} className="p-1 align-middle">
+                    <button
+                      type="button"
+                      disabled={!on || matrixSubmitting}
+                      className={`min-h-[2rem] w-full min-w-[2.25rem] rounded border px-1 py-1 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        has
+                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
+                          : 'text-muted border-white/15 bg-white/5 hover:border-white/25'
+                      }`}
+                      aria-pressed={has}
+                      onClick={() => togglePerm(appId, col)}
+                    >
+                      {has ? '✓' : '✕'}
+                    </button>
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    );
+  }
 
-  const updatePermissions = async (user: AdminUser, appId: string) => {
-    if (!appId) {
-      setPermissionsValidationError('App id is required.');
-      return;
-    }
-
-    const parsedPermissions = toPermissionPayload(permissionsValue);
-    if (permissionsValue.trim().length > 0 && parsedPermissions.length === 0) {
-      setPermissionsValidationError('Enter one or more permissions separated by commas.');
-      return;
-    }
-
-    setPermissionsValidationError(null);
-    setError(null);
-    setMessage(null);
-    try {
-      const response = await apiFetch(`/api/admin/users/${user.id}/permissions`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          app_id: appId,
-          permissions: parsedPermissions,
-        }),
-      });
-      const body = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!response.ok) {
-        setError(body?.error || 'Failed to update permissions.');
-        return;
-      }
-      setMessage('Permissions updated.');
-      closePermissionsModal();
-      await refreshUsers();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Network error updating permissions.');
-    }
-  };
-
-  const closePermissionsModal = () => {
-    setPermissionsUser(null);
-    setPermissionsAppId(null);
-    setPermissionsValue('');
-    setPermissionsValidationError(null);
-    setPermissionsSubmitting(false);
-    previousFocusRef.current?.focus();
-  };
-
-  const openPermissionsModal = (user: AdminUser, appId: string, trigger?: EventTarget | null) => {
-    if (trigger instanceof HTMLElement) {
-      previousFocusRef.current = trigger;
-    } else if (document.activeElement instanceof HTMLElement) {
-      previousFocusRef.current = document.activeElement;
-    } else {
-      previousFocusRef.current = null;
-    }
-
-    const currentPermissions = user.permissions
-      .filter((entry) => entry.app_id === appId)
-      .map((entry) => entry.permission)
-      .join(',');
-
-    setPermissionsUser(user);
-    setPermissionsAppId(appId);
-    setPermissionsValue(currentPermissions);
-    setPermissionsValidationError(null);
-  };
-
-  const submitPermissionsChange = () => {
-    if (!permissionsUser || !permissionsAppId || permissionsSubmitting) return;
-
-    setPermissionsSubmitting(true);
-    void updatePermissions(permissionsUser, permissionsAppId).finally(() => {
-      setPermissionsSubmitting(false);
-    });
-  };
+  function renderAppBlock(appId: string, label: string, indent: boolean) {
+    const on = matrixAccess[appId] === true;
+    return (
+      <div
+        className={`border-t border-white/10 py-4 first:border-t-0 first:pt-0 ${indent ? 'ml-1 border-l border-white/10 pl-4' : ''}`}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="text-foreground flex cursor-pointer items-center gap-2 text-sm font-medium">
+            <input
+              type="checkbox"
+              className="rounded border-white/30"
+              checked={on}
+              disabled={matrixSubmitting}
+              onChange={(e) => setAccess(appId, e.target.checked)}
+            />
+            <span>{label}</span>
+          </label>
+          <span className="text-muted text-xs">{appId}</span>
+        </div>
+        {on ? (
+          renderPermissionMatrix(appId)
+        ) : (
+          <p className="text-muted mt-2 text-xs">Grant access to configure capabilities.</p>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6">
@@ -466,14 +592,13 @@ export function AdminPage() {
               <tr className="text-muted text-left">
                 <th className="px-4 py-3">User</th>
                 <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">App Access</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="text-muted px-4 py-3" colSpan={4}>
+                  <td className="text-muted px-4 py-3" colSpan={3}>
                     Loading users...
                   </td>
                 </tr>
@@ -483,22 +608,15 @@ export function AdminPage() {
                     <td className="px-4 py-3">{user.username}</td>
                     <td className="px-4 py-3">{user.is_admin ? 'Admin' : 'User'}</td>
                     <td className="px-4 py-3">
-                      {availableApps.map((appId) => {
-                        const hasAccess = user.app_access.includes(appId);
-                        return (
-                          <button
-                            key={`${user.id}-${appId}`}
-                            className="mr-2 rounded border border-white/20 px-2 py-1 text-xs"
-                            type="button"
-                            onClick={() => updateAppAccess(user, appId, !hasAccess)}
-                          >
-                            {appId}:{hasAccess ? 'on' : 'off'}
-                          </button>
-                        );
-                      })}
-                    </td>
-                    <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="accent"
+                          className="h-8 px-3 text-xs"
+                          onClick={(event) => openMatrixModal(user, event.currentTarget)}
+                        >
+                          Permissions
+                        </Button>
                         {auth.user?.id === user.id && user.is_admin ? (
                           <Button
                             type="button"
@@ -527,19 +645,6 @@ export function AdminPage() {
                         >
                           Change password
                         </Button>
-                        {availableApps.map((appId) => (
-                          <Button
-                            key={`${user.id}-perms-${appId}`}
-                            type="button"
-                            variant="secondary"
-                            className="h-8 px-3 text-xs"
-                            onClick={(event) =>
-                              openPermissionsModal(user, appId, event.currentTarget)
-                            }
-                          >
-                            {appId} perms
-                          </Button>
-                        ))}
                         {auth.user?.id !== user.id ? (
                           <Button
                             type="button"
@@ -666,26 +771,26 @@ export function AdminPage() {
         </div>
       ) : null}
 
-      {permissionsUser && permissionsAppId ? (
+      {matrixUser ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           role="dialog"
           aria-modal="true"
-          aria-labelledby="admin-permissions-title"
+          aria-labelledby="admin-matrix-title"
           onClick={(event) => {
-            if (event.target === event.currentTarget && !permissionsSubmitting) {
-              closePermissionsModal();
+            if (event.target === event.currentTarget && !matrixSubmitting) {
+              closeMatrixModal();
             }
           }}
         >
           <div
-            ref={permissionsModalRef}
-            className="w-full max-w-md"
+            ref={matrixModalRef}
+            className="max-h-[90vh] w-full max-w-4xl overflow-y-auto"
             tabIndex={-1}
             onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
-              if (event.key === 'Escape' && !permissionsSubmitting) {
+              if (event.key === 'Escape' && !matrixSubmitting) {
                 event.preventDefault();
-                closePermissionsModal();
+                closeMatrixModal();
                 return;
               }
 
@@ -693,17 +798,17 @@ export function AdminPage() {
                 return;
               }
 
-              const focusableElements = getPermissionsModalFocusableElements();
+              const focusableElements = getMatrixModalFocusableElements();
               if (focusableElements.length === 0) {
                 event.preventDefault();
-                permissionsModalRef.current?.focus();
+                matrixModalRef.current?.focus();
                 return;
               }
 
               const firstElement = focusableElements[0];
               const lastElement = focusableElements[focusableElements.length - 1];
               const activeElement = document.activeElement as HTMLElement | null;
-              const modalElement = permissionsModalRef.current;
+              const modalElement = matrixModalRef.current;
 
               if (event.shiftKey) {
                 if (
@@ -728,51 +833,57 @@ export function AdminPage() {
             }}
           >
             <GlassCard className="p-6">
-              <h2 id="admin-permissions-title" className="text-foreground text-lg font-semibold">
-                Permissions for {permissionsUser.username} on {permissionsAppId}
+              <h2 id="admin-matrix-title" className="text-foreground text-lg font-semibold">
+                Access & permissions — {matrixUser.username}
               </h2>
-              <label htmlFor={permissionsInputId} className="text-muted mt-3 block text-sm">
-                Comma-separated permissions
-              </label>
-              <Input
-                id={permissionsInputId}
-                type="text"
-                className="mt-2 w-full"
-                value={permissionsValue}
-                autoFocus
-                onChange={(event) => {
-                  setPermissionsValue(event.target.value);
-                  if (permissionsValidationError) {
-                    setPermissionsValidationError(null);
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    submitPermissionsChange();
-                  }
-                }}
-                placeholder="read,write"
-              />
-              {permissionsValidationError ? (
-                <p className="mt-2 text-sm text-red-400">{permissionsValidationError}</p>
-              ) : null}
-              <div className="mt-4 flex justify-end gap-2">
+              <p className="text-muted mt-2 text-sm">
+                Toggle each app to grant access, then set capabilities. Games that belong to Codex
+                appear in the Codex section when their app ids are in Auth&apos;s app list and
+                module list (see server env{' '}
+                <span className="text-foreground/80">CODEX_MODULE_APP_IDS</span>, default warframe,
+                epic7).
+              </p>
+
+              <div className="mt-6 space-y-2">
+                {standaloneAppIds.map((appId) => (
+                  <div key={appId}>
+                    {renderAppBlock(appId, MODULE_LABELS[appId] ?? appId, false)}
+                  </div>
+                ))}
+
+                {codexGroupVisible ? (
+                  <div className="border-t border-white/15 pt-2">
+                    <h3 className="text-foreground mb-1 text-sm font-semibold tracking-wide uppercase">
+                      Codex
+                    </h3>
+                    {adminAppIds.includes('codex')
+                      ? renderAppBlock('codex', MODULE_LABELS.codex ?? 'Codex', false)
+                      : null}
+                    {codexModulesInList.map((appId) => (
+                      <div key={appId}>
+                        {renderAppBlock(appId, MODULE_LABELS[appId] ?? appId, true)}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={closePermissionsModal}
-                  disabled={permissionsSubmitting}
+                  onClick={closeMatrixModal}
+                  disabled={matrixSubmitting}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="button"
                   variant="accent"
-                  onClick={submitPermissionsChange}
-                  disabled={permissionsSubmitting}
+                  onClick={() => void saveMatrixModal()}
+                  disabled={matrixSubmitting}
                 >
-                  {permissionsSubmitting ? 'Saving...' : 'Confirm'}
+                  {matrixSubmitting ? 'Saving...' : 'Save changes'}
                 </Button>
               </div>
             </GlassCard>

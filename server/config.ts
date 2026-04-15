@@ -132,6 +132,17 @@ for (const appId of APP_LIST) {
   }
 }
 
+/** Game modules hosted under the Codex app — used only for admin UI grouping (Auth). */
+export const CODEX_MODULE_APP_IDS = (process.env.CODEX_MODULE_APP_IDS || 'warframe,epic7')
+  .split(',')
+  .map((value) => value.trim().toLowerCase())
+  .filter((value, idx, arr) => value.length > 0 && arr.indexOf(value) === idx);
+for (const appId of CODEX_MODULE_APP_IDS) {
+  if (!DOMAIN_LABEL_REGEX.test(appId)) {
+    throw new Error(`CODEX_MODULE_APP_IDS contains invalid app id "${appId}".`);
+  }
+}
+
 export const APP_URL_BY_ID = Object.fromEntries(
   APP_LIST.map((appId) => [appId, buildSubdomainUrl(appId)]),
 ) as Record<string, string>;

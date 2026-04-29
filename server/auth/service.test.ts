@@ -1,82 +1,63 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+vi.mock('../db/authDb.js', () => ({
+  db: {
+    prepare: () => ({
+      run: () => ({ changes: 0 }),
+    }),
+    transaction: (fn: (userId: number) => number) => fn,
+  },
+  getGamesForUser: vi.fn(() => []),
+  getUserById: vi.fn(() => null),
+}));
 
 import { AUTH_PUBLIC_BASE_URL } from '../config.js';
 import { sanitizeNextUrl } from './service.js';
 
 describe('sanitizeNextUrl', () => {
-  const fallback = new URL('/login', AUTH_PUBLIC_BASE_URL).toString();
+  let fallback: string;
 
-  it('returns the exact fallback when sanitizeNextUrl receives missing next', () => {
-    const value = sanitizeNextUrl(undefined, '/login');
-    expect(value).toBe(fallback);
+  beforeAll(() => {
+    fallback = new URL('/login', AUTH_PUBLIC_BASE_URL).toString();
   });
 
-  it('returns the exact fallback when sanitizeNextUrl receives an empty string', () => {
-    const value = sanitizeNextUrl('', '/login');
-    expect(value).toBe(fallback);
+  const rejectsOpenRedirectAndGarbage: ReadonlyArray<readonly [string, string | null | undefined]> = [
+    ['missing next', undefined],
+    ['empty string', ''],
+    ['null at runtime', null],
+    ['whitespace only', '   '],
+    ['invalid absolute URL', 'not-a-url'],
+    ['external origin', 'https://evil.example.com/steal'],
+    ['protocol-relative URL', '//evil.com'],
+    ['javascript URL', 'javascript:alert(1)'],
+    ['data URL', 'data:text/html,<script>alert(1)</script>'],
+    ['path traversal segment', '../admin'],
+  ];
+
+  it.each(rejectsOpenRedirectAndGarbage)('falls back for %s', (_label, input) => {
+    expect(sanitizeNextUrl(input as string | undefined, '/login')).toBe(fallback);
   });
 
-  it('returns the exact fallback when sanitizeNextUrl receives null at runtime', () => {
-    const value = sanitizeNextUrl(null as unknown as string | undefined, '/login');
-    expect(value).toBe(fallback);
+  it('falls back for Unicode-only invisible trim bait', () => {
+    expect(sanitizeNextUrl('\u200b\uFEFF', '/login')).toBe(fallback);
   });
 
-  it('returns the exact fallback when sanitizeNextUrl receives whitespace-only input', () => {
-    const value = sanitizeNextUrl('   ', '/login');
-    expect(value).toBe(fallback);
-  });
-
-  it('returns the exact fallback when sanitizeNextUrl receives an invalid absolute URL', () => {
-    const value = sanitizeNextUrl('not-a-url', '/login');
-    expect(value).toBe(fallback);
-  });
-
-  it('returns the exact fallback when sanitizeNextUrl receives a URL outside the allowlist', () => {
-    const value = sanitizeNextUrl('https://evil.example.com/steal', '/login');
-    expect(value).toBe(fallback);
-  });
-
-  it('returns the exact fallback when sanitizeNextUrl receives a protocol-relative URL', () => {
-    const value = sanitizeNextUrl('//evil.com', '/login');
-    expect(value).toBe(fallback);
-  });
-
-  it('returns the exact fallback when sanitizeNextUrl receives a javascript URL', () => {
-    const value = sanitizeNextUrl('javascript:alert(1)', '/login');
-    expect(value).toBe(fallback);
-  });
-
-  it('returns the exact fallback when sanitizeNextUrl receives a data URL', () => {
-    const value = sanitizeNextUrl('data:text/html,<script>alert(1)</script>', '/login');
-    expect(value).toBe(fallback);
-  });
-
-  it('returns the exact fallback when sanitizeNextUrl receives path traversal input', () => {
-    const value = sanitizeNextUrl('../admin', '/login');
-    expect(value).toBe(fallback);
-  });
-
-  it('preserves a valid internal redirect when sanitizeNextUrl receives an allowed path', () => {
+  it('preserves a full URL on an allowlisted origin', () => {
     const allowed = new URL('/dashboard', AUTH_PUBLIC_BASE_URL).toString();
-    const value = sanitizeNextUrl(allowed, '/login');
-    expect(value).toBe(allowed);
+    expect(sanitizeNextUrl(allowed, '/login')).toBe(allowed);
   });
 
-  it('preserves a root-relative path when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
+  it('resolves a root-relative path against AUTH_PUBLIC_BASE_URL', () => {
     const expected = new URL('/dashboard', AUTH_PUBLIC_BASE_URL).toString();
-    const value = sanitizeNextUrl('/dashboard', '/login');
-    expect(value).toBe(expected);
+    expect(sanitizeNextUrl('/dashboard', '/login')).toBe(expected);
   });
 
-  it('preserves query parameters when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
-    const expected = new URL('/dashboard?tab=settings', AUTH_PUBLIC_BASE_URL).toString();
-    const value = sanitizeNextUrl('/dashboard?tab=settings', '/login');
-    expect(value).toBe(expected);
-  });
-
-  it('preserves fragments when sanitizeNextUrl resolves against AUTH_PUBLIC_BASE_URL', () => {
-    const expected = new URL('/dashboard#section', AUTH_PUBLIC_BASE_URL).toString();
-    const value = sanitizeNextUrl('/dashboard#section', '/login');
-    expect(value).toBe(expected);
+  it('preserves query and hash on internal paths', () => {
+    expect(sanitizeNextUrl('/dashboard?tab=settings', '/login')).toBe(
+      new URL('/dashboard?tab=settings', AUTH_PUBLIC_BASE_URL).toString(),
+    );
+    expect(sanitizeNextUrl('/dashboard#section', '/login')).toBe(
+      new URL('/dashboard#section', AUTH_PUBLIC_BASE_URL).toString(),
+    );
   });
 });

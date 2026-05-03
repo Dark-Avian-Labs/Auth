@@ -10,6 +10,7 @@ import {
   LEGAL_PAGE_URL,
 } from '../../app/config';
 import { APP_PATHS } from '../../app/paths';
+import { MaterialSymbol } from '../../components/ui/MaterialSymbol';
 import { Menu } from '../../components/ui/Menu';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
@@ -117,7 +118,11 @@ export function Layout() {
               aria-label={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
               title={`Switch to ${mode === 'dark' ? 'light' : 'dark'} mode`}
             >
-              <span aria-hidden="true">{mode === 'dark' ? '☀' : '☾'}</span>
+              {mode === 'dark' ? (
+                <MaterialSymbol name="light_mode" filled />
+              ) : (
+                <MaterialSymbol name="dark_mode" filled />
+              )}
             </button>
 
             <div ref={menuRef} className="relative">

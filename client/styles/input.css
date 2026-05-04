@@ -266,26 +266,12 @@ html.ui-shadow:not(.dark) {
     backdrop-filter: blur(12px);
   }
 
-  .profile-avatar-btn {
-    padding: 0;
-    overflow: hidden;
-  }
-
-  .icon-toggle-btn:focus-visible,
-  .profile-avatar-btn:focus-visible {
+  .icon-toggle-btn:focus-visible {
     border-color: var(--color-glass-border-hover);
     box-shadow:
       0 0 0 2px color-mix(in oklab, var(--color-bg-start) 40%, transparent),
       0 0 0 4px var(--color-glass-active);
     outline: none;
-  }
-
-  .profile-avatar-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center bottom;
-    border-radius: 999px;
   }
 
   .material-symbol-rounded {
@@ -408,43 +394,6 @@ html.ui-shadow:not(.dark) {
   .form-input:not(.form-input-readonly):focus:not(:focus-visible),
   .search-box:focus:not(:focus-visible) {
     box-shadow: none;
-  }
-
-  .profile-icon-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
-    gap: 10px;
-  }
-
-  .profile-icon-option {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    border-radius: 12px;
-    padding: 4px;
-    border: 1px solid var(--color-glass-border);
-    background: var(--color-glass);
-    cursor: pointer;
-    transition:
-      background-color 0.15s ease,
-      border-color 0.15s ease;
-  }
-
-  .profile-icon-option:hover {
-    border-color: var(--color-glass-border-hover);
-    background: var(--color-glass-hover);
-  }
-
-  .profile-icon-option--selected {
-    border-color: var(--color-accent);
-    background: color-mix(in oklab, var(--color-accent) 10%, transparent);
-  }
-
-  .profile-icon-option__image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    object-position: center bottom;
-    border-radius: 999px;
   }
 
   .modal-overlay {

@@ -14,7 +14,6 @@ import { MaterialSymbol } from '../../components/ui/MaterialSymbol';
 import { Menu } from '../../components/ui/Menu';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
-import { getProfileIconSrc } from '../../utils/profileIcons';
 import { SearchBar } from './SearchBar';
 
 export function Layout() {
@@ -79,9 +78,6 @@ export function Layout() {
 
   const isLoggedIn = auth.status === 'ok' && auth.user !== null;
   const isAdmin = auth.user?.is_admin === true;
-  const rawAvatarId = Number(auth.user?.avatar);
-  const avatarId = Number.isFinite(rawAvatarId) && rawAvatarId !== 0 ? rawAvatarId : 1;
-  const avatarSrc = getProfileIconSrc(avatarId);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -129,19 +125,13 @@ export function Layout() {
               <button
                 ref={triggerRef}
                 type="button"
-                className="icon-toggle-btn profile-avatar-btn"
+                className="icon-toggle-btn"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
                 aria-label="Open user menu"
                 onClick={() => setMenuOpen((prev) => !prev)}
               >
-                {isLoggedIn ? (
-                  <img src={avatarSrc} alt="" className="profile-avatar-image" />
-                ) : (
-                  <span aria-hidden="true" className="text-xs font-semibold">
-                    🔐
-                  </span>
-                )}
+                <MaterialSymbol name="person" filled />
               </button>
               {menuOpen && (
                 <Menu>

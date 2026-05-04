@@ -23,7 +23,7 @@ import {
   TRUST_PROXY,
   ensureDataDirs,
 } from './config.js';
-import { createSchema, db } from './db/authDb.js';
+import { createSchema, db, migrateSchema } from './db/authDb.js';
 import { adminApiRouter } from './routes/adminApi.js';
 import { createAuthApiRouter } from './routes/authApi.js';
 
@@ -32,6 +32,7 @@ const SQLiteStore = require('better-sqlite3-session-store')(session);
 
 ensureDataDirs();
 createSchema();
+migrateSchema();
 console.log(`[${APP_NAME}] Central DB ready`);
 
 const app = express();

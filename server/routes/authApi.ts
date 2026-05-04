@@ -157,7 +157,6 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
             is_admin: Boolean(user.is_admin),
             display_name: user.display_name ?? '',
             email: user.email ?? '',
-            avatar: user.avatar ?? 1,
           },
           next,
         });
@@ -208,7 +207,6 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
         is_admin: Boolean(user.is_admin),
         display_name: user.display_name ?? '',
         email: user.email ?? '',
-        avatar: user.avatar ?? 1,
       },
       app_access: getGamesForUser(userId),
       apps: buildAppCards(userId),
@@ -229,7 +227,6 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
         is_admin: Boolean(user.is_admin),
         display_name: user.display_name ?? '',
         email: user.email ?? '',
-        avatar: user.avatar ?? 1,
       },
     });
   });
@@ -257,16 +254,6 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
       updates.push('email = ?');
       values.push(email);
     }
-    if (req.body?.avatar !== undefined) {
-      const avatar = Number(req.body.avatar);
-      if (!Number.isInteger(avatar) || avatar < 1 || avatar > 16) {
-        res.status(400).json({ error: 'Avatar must be between 1 and 16.' });
-        return;
-      }
-      updates.push('avatar = ?');
-      values.push(avatar);
-    }
-
     if (updates.length === 0) {
       res.status(400).json({ error: 'No profile updates provided.' });
       return;
@@ -295,7 +282,6 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
         is_admin: Boolean(updated.is_admin),
         display_name: updated.display_name ?? '',
         email: updated.email ?? '',
-        avatar: updated.avatar ?? 1,
       },
     });
   });

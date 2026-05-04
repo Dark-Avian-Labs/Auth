@@ -10,7 +10,6 @@ import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { useTheme, type ThemeMode } from '../../context/ThemeContext';
 import { apiFetch } from '../../utils/api';
-import { getProfileIconSrc, PROFILE_AVATAR_IDS } from '../../utils/profileIcons';
 import { useAuth } from '../auth/AuthContext';
 
 function ModePillToggle({ mode, setMode }: { mode: ThemeMode; setMode: (m: ThemeMode) => void }) {
@@ -57,7 +56,6 @@ export function ProfilePage() {
   const profile = auth.user;
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
-  const [avatar, setAvatar] = useState(1);
   const [saveStatus, setSaveStatus] = useState<{
     type: 'success' | 'error';
     message: string;
@@ -102,8 +100,6 @@ export function ProfilePage() {
     if (!profile) return;
     setDisplayName(profile.display_name ?? '');
     setEmail(profile.email ?? '');
-    const avatarId = Number(profile.avatar);
-    setAvatar(Number.isInteger(avatarId) && avatarId >= 1 && avatarId <= 16 ? avatarId : 1);
   }, [profile]);
 
   if (!profile) {
@@ -126,7 +122,6 @@ export function ProfilePage() {
       const result = await updateProfile({
         display_name: displayName.trim(),
         email: email.trim(),
-        avatar,
       });
       setSaveStatus({
         type: result.ok ? 'success' : 'error',
@@ -215,26 +210,6 @@ export function ProfilePage() {
             </Button>
           </div>
         ) : null}
-      </GlassCard>
-
-      <GlassCard className="p-6">
-        <h2 className="text-foreground mb-3 text-lg font-semibold">Profile Icon</h2>
-        <div className="profile-icon-grid">
-          {PROFILE_AVATAR_IDS.map((id) => (
-            <button
-              key={id}
-              type="button"
-              className={`profile-icon-option ${avatar === id ? 'profile-icon-option--selected' : ''}`}
-              onClick={() => {
-                setAvatar(id);
-                setSaveStatus(null);
-              }}
-              aria-label={`Select profile icon ${id}`}
-            >
-              <img src={getProfileIconSrc(id)} alt="" className="profile-icon-option__image" />
-            </button>
-          ))}
-        </div>
       </GlassCard>
 
       <GlassCard className="overflow-hidden p-0">

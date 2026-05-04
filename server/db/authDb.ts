@@ -22,7 +22,6 @@ export function createSchema(): void {
       is_admin INTEGER NOT NULL DEFAULT 0,
       display_name TEXT NOT NULL DEFAULT '',
       email TEXT NOT NULL DEFAULT '',
-      avatar INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -67,6 +66,18 @@ export function createSchema(): void {
   `);
 }
 
+export function migrateSchema(): void {
+  const columns = db.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>;
+  if (!columns.some((c) => c.name === 'avatar')) {
+    return;
+  }
+  try {
+    db.exec('ALTER TABLE users DROP COLUMN avatar');
+  } catch (err) {
+    console.warn('[authDb] Failed to DROP COLUMN users.avatar (needs SQLite 3.35+)', err);
+  }
+}
+
 export type UserRow = {
   id: number;
   username: string;
@@ -74,14 +85,13 @@ export type UserRow = {
   is_admin: number;
   display_name: string;
   email: string;
-  avatar: number;
   created_at: string;
 };
 
 export function getUserByUsername(username: string): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE username = ?',
+      'SELECT id, username, password_hash, is_admin, display_name, email, created_at FROM users WHERE username = ?',
     )
     .get(username.trim()) as UserRow | undefined;
 }
@@ -89,7 +99,7 @@ export function getUserByUsername(username: string): UserRow | undefined {
 export function getUserById(userId: number): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, display_name, email, avatar, created_at FROM users WHERE id = ?',
+      'SELECT id, username, password_hash, is_admin, display_name, email, created_at FROM users WHERE id = ?',
     )
     .get(userId) as UserRow | undefined;
 }

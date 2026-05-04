@@ -18,7 +18,6 @@ interface AuthContextValue {
   updateProfile: (updates: {
     display_name?: string;
     email?: string;
-    avatar?: number;
   }) => Promise<{ ok: boolean; error?: string }>;
 }
 

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 
 import { SEARCH_PLACEHOLDER } from '../../app/config';
+import { MaterialSymbol } from '../ui/MaterialSymbol';
 
 interface SearchBarProps {
   onSearch?: (query: string) => void;
@@ -28,12 +29,12 @@ export function SearchBar({ onSearch }: SearchBarProps) {
       />
       {query && (
         <button
-          className="text-muted hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 text-lg"
+          className="text-muted hover:text-foreground absolute top-1/2 right-2 flex -translate-y-1/2 items-center justify-center p-0.5"
           onClick={() => setQuery('')}
           aria-label="Clear search"
           type="button"
         >
-          &times;
+          <MaterialSymbol name="close" style={{ fontSize: 20 }} />
         </button>
       )}
     </form>

@@ -6,6 +6,7 @@ import { APP_PATHS } from '../../app/paths';
 import { Button } from '../../components/ui/Button';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
+import { MaterialSymbol } from '../../components/ui/MaterialSymbol';
 import { apiFetch } from '../../utils/api';
 import { useAuth } from '../auth/AuthContext';
 
@@ -509,7 +510,11 @@ export function AdminPage() {
                       aria-pressed={has}
                       onClick={() => togglePerm(appId, col)}
                     >
-                      {has ? '✓' : '✕'}
+                      {has ? (
+                        <MaterialSymbol name="check" filled style={{ fontSize: 18 }} />
+                      ) : (
+                        <MaterialSymbol name="close" style={{ fontSize: 18 }} />
+                      )}
                     </button>
                   </td>
                 );

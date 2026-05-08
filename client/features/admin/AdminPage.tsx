@@ -575,19 +575,30 @@ export function AdminPage() {
         <h2 className="text-foreground mb-3 text-lg font-semibold">Create User</h2>
         <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-center">
           <Input
+            id="auth-admin-new-username"
+            name="username"
             type="text"
             placeholder="Username"
             value={newUsername}
             onChange={(e) => setNewUsername(e.target.value)}
+            aria-label="New user username"
           />
           <Input
+            id="auth-admin-new-password"
+            name="new-password"
             type="password"
             placeholder="Password"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
+            aria-label="New user password"
+            autoComplete="new-password"
           />
-          <label className="text-muted flex items-center gap-2 text-sm">
+          <label
+            className="text-muted flex items-center gap-2 text-sm"
+            htmlFor="auth-admin-new-is-admin"
+          >
             <input
+              id="auth-admin-new-is-admin"
               type="checkbox"
               checked={newIsAdmin}
               onChange={(e) => setNewIsAdmin(e.target.checked)}

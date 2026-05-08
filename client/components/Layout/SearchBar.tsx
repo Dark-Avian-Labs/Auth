@@ -20,7 +20,10 @@ export function SearchBar({ onSearch }: SearchBarProps) {
   return (
     <form className="search-wrapper relative" onSubmit={handleSubmit}>
       <input
-        type="text"
+        id="auth-header-search"
+        name="search"
+        type="search"
+        autoComplete="off"
         className="search-box w-52"
         aria-label="Search"
         placeholder={SEARCH_PLACEHOLDER}

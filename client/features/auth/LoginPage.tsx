@@ -121,6 +121,8 @@ export function LoginPage() {
           }}
         >
           <Input
+            id="auth-login-username"
+            name="username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -129,6 +131,8 @@ export function LoginPage() {
             placeholder="Username"
           />
           <Input
+            id="auth-login-password"
+            name="password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}

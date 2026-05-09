@@ -12,6 +12,7 @@ import { requireAdmin, sanitizeNextUrl } from './auth/service.js';
 import {
   ALLOWED_APP_ORIGINS,
   APP_NAME,
+  APP_VERSION,
   AUTH_COOKIE_DOMAIN,
   HOST,
   NODE_ENV,
@@ -53,6 +54,7 @@ const baselineLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) =>
     req.path === '/healthz' ||
+    req.path === '/api/version' ||
     req.path === '/favicon.ico' ||
     /^\/assets\/.+\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(req.path),
 });
@@ -164,6 +166,11 @@ app.post('/logout', (req, res) => {
 app.get('/logout', (_req, res) => {
   res.set('Allow', 'POST');
   return res.status(405).json({ error: 'Use POST /logout' });
+});
+
+app.get('/api/version', (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ version: APP_VERSION });
 });
 
 app.use('/api', (_req, res) => {

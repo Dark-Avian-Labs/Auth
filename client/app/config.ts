@@ -46,3 +46,8 @@ export const ALLOWED_NEXT_ORIGINS = readCsvEnv(
 );
 
 export const AVAILABLE_APPS = readCsvEnv(import.meta.env.VITE_AVAILABLE_APPS as string | undefined);
+
+export const APP_VERSION = readTrimmedEnv(
+  import.meta.env.VITE_APP_VERSION as string | undefined,
+  'dev',
+);

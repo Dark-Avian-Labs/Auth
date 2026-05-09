@@ -33,6 +33,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const parentName = path.basename(path.resolve(__dirname, '..'));
 export const PROJECT_ROOT = path.resolve(__dirname, parentName === 'dist' ? '../..' : '..');
 
+function readPackageVersion(projectRoot: string): string {
+  try {
+    const pkgPath = path.join(projectRoot, 'package.json');
+    const raw = fs.readFileSync(pkgPath, 'utf-8');
+    const pkg = JSON.parse(raw) as { version?: string };
+    const v = pkg.version?.trim();
+    return v && v.length > 0 ? v : '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
+export const APP_VERSION = readPackageVersion(PROJECT_ROOT);
+
 const envPath = resolveEnvFilePath(PROJECT_ROOT);
 if (envPath) {
   try {

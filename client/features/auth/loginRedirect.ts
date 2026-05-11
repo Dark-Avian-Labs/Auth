@@ -42,7 +42,6 @@ export interface PostLoginRedirectDeps {
   homePath: string;
 }
 
-/** Validates `next` from POST /api/auth/login before navigating (defense in depth after server `sanitizeNextUrl`). */
 export function applyPostLoginRedirect(bodyNext: unknown, deps: PostLoginRedirectDeps): void {
   if (typeof bodyNext !== 'string') {
     deps.navigate(deps.homePath);

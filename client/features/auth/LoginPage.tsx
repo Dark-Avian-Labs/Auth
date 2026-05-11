@@ -24,7 +24,6 @@ function isSafeRelativePath(next: string): boolean {
   return (
     decodedNext.startsWith('/') &&
     !decodedNext.startsWith('//') &&
-    !decodedNext.includes('//') &&
     !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(decodedNext)
   );
 }
@@ -89,8 +88,12 @@ export function LoginPage() {
               window.location.href = targetUrl.href;
               return;
             }
+            console.warn('[auth] Login redirect rejected: absolute URL origin mismatch', {
+              expectedOrigin: window.location.origin,
+              targetOrigin: targetUrl.origin,
+            });
           } catch {
-            // ignore
+            console.warn('[auth] Login redirect rejected: invalid absolute URL from server');
           }
           navigate(APP_PATHS.home);
           return;
@@ -99,6 +102,7 @@ export function LoginPage() {
           navigate(body.next);
           return;
         }
+        console.warn('[auth] Login redirect rejected: unsafe or invalid next path from server');
       }
       navigate(APP_PATHS.home);
     } catch {

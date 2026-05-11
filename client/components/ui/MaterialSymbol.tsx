@@ -6,11 +6,13 @@ export function MaterialSymbol({
   className,
   filled = false,
   style,
+  'aria-label': ariaLabel,
   ...rest
 }: {
   name: string;
   filled?: boolean;
 } & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
+  const decorative = ariaLabel == null || String(ariaLabel).trim() === '';
   return (
     <span
       className={clsx('material-symbol-rounded', className)}
@@ -18,8 +20,9 @@ export function MaterialSymbol({
         fontVariationSettings: `'FILL' ${filled ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
         ...style,
       }}
-      aria-hidden
       {...rest}
+      {...(decorative ? null : { 'aria-label': ariaLabel })}
+      aria-hidden={decorative ? true : undefined}
     >
       {name}
     </span>

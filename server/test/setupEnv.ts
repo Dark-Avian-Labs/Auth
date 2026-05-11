@@ -15,7 +15,9 @@ try {
   migrateSchema();
 } catch (err) {
   if (process.env.MOCK_DB === 'true') {
-    console.debug('[test setup] Skipping central DB schema init (MOCK_DB=true).', err);
+    console.debug(
+      '[test setup] Skipping central DB schema init (MOCK_DB=true); import/init failure ignored as expected.',
+    );
   } else {
     console.error('[test setup] Central DB schema init failed.', err);
     throw err;

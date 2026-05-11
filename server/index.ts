@@ -74,11 +74,23 @@ const sessionStore = new SQLiteStore({
 });
 
 const cookieOptions: express.CookieOptions = {
+  path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000,
   httpOnly: true,
   secure: SECURE_COOKIES,
   sameSite: SECURE_COOKIES ? 'none' : 'lax',
   domain: AUTH_COOKIE_DOMAIN,
+};
+
+const sessionCookieClearOptions: Pick<
+  express.CookieOptions,
+  'path' | 'httpOnly' | 'secure' | 'sameSite' | 'domain'
+> = {
+  path: cookieOptions.path,
+  httpOnly: cookieOptions.httpOnly,
+  secure: cookieOptions.secure,
+  sameSite: cookieOptions.sameSite,
+  domain: cookieOptions.domain,
 };
 
 app.use(
@@ -117,17 +129,20 @@ app.use((req, res, next) => {
 });
 
 const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function secFetchSiteIsCrossSite(req: Request): boolean {
+  const raw = req.headers['sec-fetch-site'];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return typeof value === 'string' && value.toLowerCase() === 'cross-site';
+}
+
 app.use((req: Request, res: Response, next) => {
   if (!CSRF_PROTECTED_METHODS.has(req.method.toUpperCase())) {
     next();
     return;
   }
 
-  const secFetchSiteHeader = req.headers['sec-fetch-site'];
-  const secFetchSite = Array.isArray(secFetchSiteHeader)
-    ? secFetchSiteHeader[0]
-    : secFetchSiteHeader;
-  if (typeof secFetchSite === 'string' && secFetchSite.toLowerCase() === 'cross-site') {
+  if (secFetchSiteIsCrossSite(req)) {
     res.status(403).json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_INVALID' });
     return;
   }
@@ -169,13 +184,6 @@ app.use(
 app.use('/api/admin', adminApiRouter);
 
 app.post('/logout', (req, res) => {
-  const fetchSiteHeader = req.headers['sec-fetch-site'];
-  const fetchSite = Array.isArray(fetchSiteHeader) ? fetchSiteHeader[0] : fetchSiteHeader;
-  if (fetchSite === 'cross-site') {
-    res.status(403).json({ error: 'Cross-site logout is not allowed.' });
-    return;
-  }
-
   const nextInput =
     typeof req.query.next === 'string' && req.query.next.length > 0 ? req.query.next : '';
   const next = sanitizeNextUrl(nextInput, '/login');
@@ -183,12 +191,7 @@ app.post('/logout', (req, res) => {
     if (err) {
       console.error('[Session] Failed to destroy session:', err);
     }
-    res.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: SECURE_COOKIES,
-      sameSite: SECURE_COOKIES ? 'none' : 'lax',
-      domain: AUTH_COOKIE_DOMAIN,
-    });
+    res.clearCookie(SESSION_COOKIE_NAME, sessionCookieClearOptions);
     res.redirect(next);
   });
 });

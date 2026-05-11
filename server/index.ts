@@ -184,11 +184,6 @@ app.use(
 app.use('/api/admin', adminApiRouter);
 
 app.post('/logout', (req, res) => {
-  if (secFetchSiteIsCrossSite(req)) {
-    res.status(403).json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_INVALID' });
-    return;
-  }
-
   const nextInput =
     typeof req.query.next === 'string' && req.query.next.length > 0 ? req.query.next : '';
   const next = sanitizeNextUrl(nextInput, '/login');

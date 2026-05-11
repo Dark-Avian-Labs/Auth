@@ -7,40 +7,7 @@ import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
 import { apiFetch } from '../../utils/api';
 import { useAuth } from './AuthContext';
-
-function isSafeRelativePath(next: string): boolean {
-  if (next.includes('\\') || /%5c/i.test(next)) {
-    return false;
-  }
-  let decodedNext: string;
-  try {
-    decodedNext = decodeURIComponent(next);
-  } catch {
-    decodedNext = next;
-  }
-  if (decodedNext.includes('\\')) {
-    return false;
-  }
-  return (
-    decodedNext.startsWith('/') &&
-    !decodedNext.startsWith('//') &&
-    !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(decodedNext)
-  );
-}
-
-function isAbsoluteHttpUrl(next: string): boolean {
-  return /^https?:\/\//i.test(next);
-}
-
-function readNextFromLocation(search: string): string {
-  const params = new URLSearchParams(search);
-  const rawNext = params.get('next');
-  if (!rawNext) {
-    return APP_PATHS.home;
-  }
-  const next = rawNext.trim();
-  return isSafeRelativePath(next) ? next : APP_PATHS.home;
-}
+import { applyPostLoginRedirect, readNextFromLocation } from './loginRedirect';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -80,31 +47,15 @@ export function LoginPage() {
         return;
       }
       await refresh();
-      if (typeof body?.next === 'string') {
-        if (isAbsoluteHttpUrl(body.next)) {
-          try {
-            const targetUrl = new URL(body.next);
-            if (targetUrl.origin === window.location.origin) {
-              window.location.href = targetUrl.href;
-              return;
-            }
-            console.warn('[auth] Login redirect rejected: absolute URL origin mismatch', {
-              expectedOrigin: window.location.origin,
-              targetOrigin: targetUrl.origin,
-            });
-          } catch {
-            console.warn('[auth] Login redirect rejected: invalid absolute URL from server');
-          }
-          navigate(APP_PATHS.home);
-          return;
-        }
-        if (isSafeRelativePath(body.next)) {
-          navigate(body.next);
-          return;
-        }
-        console.warn('[auth] Login redirect rejected: unsafe or invalid next path from server');
-      }
-      navigate(APP_PATHS.home);
+      applyPostLoginRedirect(body?.next, {
+        windowOrigin: window.location.origin,
+        assignHref: (href) => {
+          window.location.href = href;
+        },
+        navigate,
+        warn: console.warn.bind(console),
+        homePath: APP_PATHS.home,
+      });
     } catch {
       setError('Login failed.');
     } finally {

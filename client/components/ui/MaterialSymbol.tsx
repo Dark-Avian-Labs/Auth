@@ -21,9 +21,8 @@ export function MaterialSymbol({
         ...style,
       }}
       {...rest}
-      {...(decorative
-        ? { 'aria-hidden': true as const }
-        : { 'aria-hidden': false as const, 'aria-label': ariaLabel })}
+      {...(decorative ? null : { 'aria-label': ariaLabel })}
+      aria-hidden={decorative ? true : undefined}
     >
       {name}
     </span>

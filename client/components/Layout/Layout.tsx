@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 
-import bgArt from '../../../background.txt?raw';
 import feathers from '../../../feathers.png';
 import {
   APP_DISPLAY_NAME,
@@ -16,6 +15,7 @@ import { Menu } from '../../components/ui/Menu';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
 import { useStaleBundlePrompt } from '../../hooks/useStaleBundlePrompt';
+import { AsciiWaveBackground } from './AsciiWaveBackground';
 import { SearchBar } from './SearchBar';
 
 export function Layout() {
@@ -87,9 +87,7 @@ export function Layout() {
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <div className="bg-art" aria-hidden="true">
-        {bgArt}
-      </div>
+      <AsciiWaveBackground />
       <header className="relative z-30 h-[100px] px-6">
         <div className="mx-auto grid h-full w-full max-w-[1900px] grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div className="flex w-fit max-w-full min-w-0 flex-col gap-0.5 justify-self-start">

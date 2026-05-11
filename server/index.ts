@@ -12,6 +12,7 @@ import { requireAdmin, sanitizeNextUrl } from './auth/service.js';
 import {
   ALLOWED_APP_ORIGINS,
   APP_NAME,
+  AUTH_PUBLIC_BASE_URL,
   APP_VERSION,
   AUTH_COOKIE_DOMAIN,
   HOST,
@@ -112,6 +113,35 @@ app.use(csrfSynchronisedProtection);
 
 app.use((req, res, next) => {
   (res.locals as { csrfToken?: string }).csrfToken = generateToken(req);
+  next();
+});
+
+const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+app.use((req: Request, res: Response, next) => {
+  if (!CSRF_PROTECTED_METHODS.has(req.method.toUpperCase())) {
+    next();
+    return;
+  }
+
+  const secFetchSiteHeader = req.headers['sec-fetch-site'];
+  const secFetchSite = Array.isArray(secFetchSiteHeader)
+    ? secFetchSiteHeader[0]
+    : secFetchSiteHeader;
+  if (typeof secFetchSite === 'string' && secFetchSite.toLowerCase() === 'cross-site') {
+    res.status(403).json({ error: 'Cross-site request blocked', code: 'CSRF_ORIGIN_INVALID' });
+    return;
+  }
+
+  const originHeader = req.headers.origin;
+  const origin = Array.isArray(originHeader) ? originHeader[0] : originHeader;
+  if (typeof origin === 'string' && origin.length > 0) {
+    const allowedOrigins = new Set<string>([AUTH_PUBLIC_BASE_URL, ...ALLOWED_APP_ORIGINS]);
+    if (!allowedOrigins.has(origin)) {
+      res.status(403).json({ error: 'Origin not allowed', code: 'CSRF_ORIGIN_INVALID' });
+      return;
+    }
+  }
+
   next();
 });
 

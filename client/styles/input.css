@@ -57,6 +57,7 @@
   --bg-art-line-height: 13px;
   --ascii-canvas-fg: color-mix(in oklab, var(--color-foreground) 5%, transparent);
   --ascii-canvas-fg-bright: color-mix(in oklab, var(--color-foreground) 12%, transparent);
+  --ascii-canvas-fg-accent: color-mix(in oklab, #ff0000 12%, transparent);
 }
 
 html:not(.dark) {
@@ -76,6 +77,7 @@ html:not(.dark) {
   --color-bg-glow: oklch(68% 0.03 252 / 0.28);
   --ascii-canvas-fg: color-mix(in oklab, var(--color-foreground) 5%, transparent);
   --ascii-canvas-fg-bright: color-mix(in oklab, var(--color-foreground) 18%, transparent);
+  --ascii-canvas-fg-accent: color-mix(in oklab, #ff0000 18%, transparent);
 }
 
 html.dark {

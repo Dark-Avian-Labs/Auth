@@ -28,6 +28,7 @@ import {
 import { createSchema, db, migrateSchema } from './db/authDb.js';
 import { adminApiRouter } from './routes/adminApi.js';
 import { createAuthApiRouter } from './routes/authApi.js';
+import { secFetchSiteIsCrossSite } from './secFetchSite.js';
 
 const require = createRequire(import.meta.url);
 const SQLiteStore = require('better-sqlite3-session-store')(session);
@@ -129,12 +130,6 @@ app.use((req, res, next) => {
 });
 
 const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-
-function secFetchSiteIsCrossSite(req: Request): boolean {
-  const raw = req.headers['sec-fetch-site'];
-  const value = Array.isArray(raw) ? raw[0] : raw;
-  return typeof value === 'string' && value.toLowerCase() === 'cross-site';
-}
 
 app.use((req: Request, res: Response, next) => {
   if (!CSRF_PROTECTED_METHODS.has(req.method.toUpperCase())) {

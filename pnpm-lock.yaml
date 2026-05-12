@@ -14,6 +14,9 @@ importers:
       '@dotenvx/dotenvx':
         specifier: ^1.65.0
         version: 1.65.0
+      '@fontsource-variable/cascadia-mono':
+        specifier: ^5.2.2
+        version: 5.2.2
       '@fontsource-variable/geist':
         specifier: ^5.2.8
         version: 5.2.8
@@ -271,6 +274,9 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@fontsource-variable/cascadia-mono@5.2.2':
+    resolution: {integrity: sha512-IjtyQuB9IiV8O/q2WWh+aZaRP8Q8rKl3d7J4aw1jUOt0BRjIQu1uSufUw0W5pZr6gpgGcol+Yjq6zWP8GM0auQ==}
 
   '@fontsource-variable/geist-mono@5.2.7':
     resolution: {integrity: sha512-ZKlZ5sjtalb2TwXKs400mAGDlt/+2ENLNySPx0wTz3bP3mWARCsUW+rpxzZc7e05d2qGch70pItt3K4qttbIYA==}
@@ -3153,6 +3159,8 @@ snapshots:
   '@exodus/bytes@1.15.0(@noble/hashes@1.8.0)':
     optionalDependencies:
       '@noble/hashes': 1.8.0
+
+  '@fontsource-variable/cascadia-mono@5.2.2': {}
 
   '@fontsource-variable/geist-mono@5.2.7': {}
 

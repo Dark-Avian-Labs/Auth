@@ -1,18 +1,28 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react';
 import { Navigate } from 'react-router-dom';
 
 import { AVAILABLE_APPS } from '../../app/config';
 import { APP_PATHS } from '../../app/paths';
 import { Button } from '../../components/ui/Button';
+import { FormSelect, type FormSelectOption } from '../../components/ui/FormSelect';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { Input } from '../../components/ui/Input';
-import { MaterialSymbol } from '../../components/ui/MaterialSymbol';
 import { apiFetch } from '../../utils/api';
 import { useAuth } from '../auth/AuthContext';
 
-interface PermissionEntry {
+type AppRole = 'user' | 'admin';
+
+interface AppRoleEntry {
   app_id: string;
-  permission: string;
+  role: AppRole;
 }
 
 interface AdminUser {
@@ -20,10 +30,13 @@ interface AdminUser {
   username: string;
   is_admin: boolean;
   app_access: string[];
-  permissions: PermissionEntry[];
+  app_roles: AppRoleEntry[];
 }
 
-const PERMISSION_COLUMNS = ['read', 'write', 'create', 'update', 'delete', 'admin'] as const;
+const ROLE_OPTIONS: FormSelectOption<AppRole>[] = [
+  { value: 'user', label: 'User' },
+  { value: 'admin', label: 'Admin' },
+];
 
 const DEFAULT_CODEX_MODULES = ['warframe', 'epic7'];
 
@@ -37,26 +50,51 @@ function cloneAdminUser(user: AdminUser): AdminUser {
   return {
     ...user,
     app_access: [...user.app_access],
-    permissions: user.permissions.map((p) => ({ ...p })),
+    app_roles: user.app_roles.map((r) => ({ ...r })),
   };
 }
 
-function permissionsForApp(user: AdminUser, appId: string): string[] {
-  return user.permissions
-    .filter((e) => e.app_id === appId)
-    .map((e) => e.permission)
-    .sort();
+function effectiveRoleForApp(user: AdminUser, appId: string): AppRole {
+  const row = user.app_roles.find((e) => e.app_id === appId);
+  return row?.role === 'admin' ? 'admin' : 'user';
 }
 
-function sortedCopy(list: string[]): string[] {
-  return [...list].sort();
-}
+function trapModalFocus(
+  event: KeyboardEvent<HTMLDivElement>,
+  modalRef: RefObject<HTMLDivElement | null>,
+  focusableSelector: string,
+  enabled: boolean,
+) {
+  if (!enabled || event.key !== 'Tab') return;
 
-function permsListsEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  const x = sortedCopy(a);
-  const y = sortedCopy(b);
-  return x.every((v, i) => v === y[i]);
+  const modalElement = modalRef.current;
+  if (!modalElement) return;
+
+  const focusableElements = Array.from(
+    modalElement.querySelectorAll<HTMLElement>(focusableSelector),
+  );
+  if (focusableElements.length === 0) {
+    event.preventDefault();
+    modalRef.current?.focus();
+    return;
+  }
+
+  const firstElement = focusableElements[0];
+  const lastElement = focusableElements[focusableElements.length - 1];
+  const activeElement = document.activeElement as HTMLElement | null;
+
+  if (event.shiftKey) {
+    if (!activeElement || activeElement === firstElement || !modalElement.contains(activeElement)) {
+      event.preventDefault();
+      lastElement.focus();
+    }
+    return;
+  }
+
+  if (!activeElement || activeElement === lastElement || !modalElement.contains(activeElement)) {
+    event.preventDefault();
+    firstElement.focus();
+  }
 }
 
 export function AdminPage() {
@@ -69,49 +107,48 @@ export function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [newUsername, setNewUsername] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [newIsAdmin, setNewIsAdmin] = useState(false);
+
+  const [addUserOpen, setAddUserOpen] = useState(false);
+  const [addUsername, setAddUsername] = useState('');
+  const [addPassword, setAddPassword] = useState('');
+  const [addSubmitting, setAddSubmitting] = useState(false);
+
   const [passwordUser, setPasswordUser] = useState<AdminUser | null>(null);
   const [passwordValue, setPasswordValue] = useState('');
   const [passwordSubmitting, setPasswordSubmitting] = useState(false);
 
+  const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
   const [matrixUser, setMatrixUser] = useState<AdminUser | null>(null);
+  const [matrixServiceAdmin, setMatrixServiceAdmin] = useState(false);
   const [matrixAccess, setMatrixAccess] = useState<Record<string, boolean>>({});
-  const [matrixPerms, setMatrixPerms] = useState<Record<string, string[]>>({});
+  const [matrixRoles, setMatrixRoles] = useState<Record<string, AppRole>>({});
   const [matrixSubmitting, setMatrixSubmitting] = useState(false);
   const matrixBaselineRef = useRef<AdminUser | null>(null);
 
   const passwordInputId = 'admin-password-input';
+  const addPasswordInputId = useId();
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const passwordModalRef = useRef<HTMLDivElement | null>(null);
+  const addUserModalRef = useRef<HTMLDivElement | null>(null);
+  const deleteModalRef = useRef<HTMLDivElement | null>(null);
   const matrixModalRef = useRef<HTMLDivElement | null>(null);
 
-  const getPasswordModalFocusableElements = () => {
-    const modalElement = passwordModalRef.current;
-    if (!modalElement) return [] as HTMLElement[];
-
-    const focusableSelector =
-      'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
-
-    return Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));
-  };
-
-  const getMatrixModalFocusableElements = () => {
-    const modalElement = matrixModalRef.current;
-    if (!modalElement) return [] as HTMLElement[];
-
-    const focusableSelector =
-      'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
-
-    return Array.from(modalElement.querySelectorAll<HTMLElement>(focusableSelector));
-  };
+  const focusableSelector =
+    'a[href], area[href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
 
   const codexModuleSet = new Set(codexModuleIds);
   const standaloneAppIds = adminAppIds.filter((id) => id !== 'codex' && !codexModuleSet.has(id));
   const codexGroupVisible = adminAppIds.includes('codex') || codexModuleIds.length > 0;
 
-  const isAppManageable = (appId: string) => adminAppIds.includes(appId);
+  const managedGameIds = useMemo(
+    () => Array.from(new Set([...adminAppIds, ...codexModuleIds])).sort(),
+    [adminAppIds, codexModuleIds],
+  );
+
+  const isAppManageable = (appId: string) =>
+    adminAppIds.includes(appId) || codexModuleIds.includes(appId);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,7 +173,14 @@ export function AdminPage() {
           return;
         }
         if (!cancelled) {
-          setUsers(Array.isArray(body.users) ? body.users : []);
+          setUsers(
+            Array.isArray(body.users)
+              ? body.users.map((u) => ({
+                  ...u,
+                  app_roles: Array.isArray(u.app_roles) ? u.app_roles : [],
+                }))
+              : [],
+          );
           if (Array.isArray(body.app_ids) && body.app_ids.length > 0) {
             setAdminAppIds(body.app_ids);
           }
@@ -158,27 +202,51 @@ export function AdminPage() {
 
   useEffect(() => {
     if (!passwordUser) return;
-
-    const focusableElements = getPasswordModalFocusableElements();
+    const focusableElements = Array.from(
+      passwordModalRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+    );
     if (focusableElements.length > 0) {
       focusableElements[0].focus();
       return;
     }
-
     passwordModalRef.current?.focus();
-  }, [passwordUser]);
+  }, [passwordUser, focusableSelector]);
+
+  useEffect(() => {
+    if (!addUserOpen) return;
+    const focusableElements = Array.from(
+      addUserModalRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+    );
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+      return;
+    }
+    addUserModalRef.current?.focus();
+  }, [addUserOpen, focusableSelector]);
+
+  useEffect(() => {
+    if (!deleteUser) return;
+    const focusableElements = Array.from(
+      deleteModalRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+    );
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+      return;
+    }
+    deleteModalRef.current?.focus();
+  }, [deleteUser, focusableSelector]);
 
   useEffect(() => {
     if (!matrixUser) return;
-
-    const focusableElements = getMatrixModalFocusableElements();
+    const focusableElements = Array.from(
+      matrixModalRef.current?.querySelectorAll<HTMLElement>(focusableSelector) ?? [],
+    );
     if (focusableElements.length > 0) {
       focusableElements[0].focus();
       return;
     }
-
     matrixModalRef.current?.focus();
-  }, [matrixUser]);
+  }, [matrixUser, focusableSelector]);
 
   if (auth.status !== 'ok') {
     return <Navigate to={APP_PATHS.login} replace />;
@@ -212,7 +280,12 @@ export function AdminPage() {
         codex_module_ids?: string[];
       };
       if (Array.isArray(body.users)) {
-        setUsers(body.users);
+        setUsers(
+          body.users.map((u) => ({
+            ...u,
+            app_roles: Array.isArray(u.app_roles) ? u.app_roles : [],
+          })),
+        );
       }
       if (Array.isArray(body.app_ids) && body.app_ids.length > 0) {
         setAdminAppIds(body.app_ids);
@@ -228,14 +301,14 @@ export function AdminPage() {
 
   const initMatrixDraft = (user: AdminUser) => {
     const access: Record<string, boolean> = {};
-    const perms: Record<string, string[]> = {};
-    const ids = new Set<string>([...adminAppIds, ...codexModuleIds]);
-    for (const id of ids) {
+    const roles: Record<string, AppRole> = {};
+    for (const id of managedGameIds) {
       access[id] = user.app_access.includes(id);
-      perms[id] = permissionsForApp(user, id);
+      roles[id] = effectiveRoleForApp(user, id);
     }
+    setMatrixServiceAdmin(user.is_admin);
     setMatrixAccess(access);
-    setMatrixPerms(perms);
+    setMatrixRoles(roles);
   };
 
   const openMatrixModal = (user: AdminUser, trigger?: EventTarget | null) => {
@@ -262,19 +335,8 @@ export function AdminPage() {
     if (!isAppManageable(appId)) return;
     setMatrixAccess((prev) => ({ ...prev, [appId]: enabled }));
     if (!enabled) {
-      setMatrixPerms((prev) => ({ ...prev, [appId]: [] }));
+      setMatrixRoles((prev) => ({ ...prev, [appId]: 'user' }));
     }
-  };
-
-  const togglePerm = (appId: string, perm: string) => {
-    if (!isAppManageable(appId)) return;
-    if (!matrixAccess[appId]) return;
-    setMatrixPerms((prev) => {
-      const cur = prev[appId] ?? [];
-      const has = cur.includes(perm);
-      const next = has ? cur.filter((p) => p !== perm) : [...cur, perm];
-      return { ...prev, [appId]: next };
-    });
   };
 
   const saveMatrixModal = async () => {
@@ -285,43 +347,63 @@ export function AdminPage() {
     setError(null);
     setMessage(null);
     try {
-      for (const appId of adminAppIds) {
-        const wasOn = baseline.app_access.includes(appId);
-        const nowOn = matrixAccess[appId] === true;
-        const wasPerms = permissionsForApp(baseline, appId);
-        const nowPerms = nowOn ? sortedCopy(matrixPerms[appId] ?? []) : [];
-
-        if (wasOn === nowOn && permsListsEqual(wasPerms, nowPerms)) {
-          continue;
-        }
-
-        const accessRes = await apiFetch(
-          `/api/admin/users/${matrixUser.id}/apps/${encodeURIComponent(appId)}`,
-          {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ enabled: nowOn }),
-          },
-        );
-        if (!accessRes.ok) {
-          const body = (await accessRes.json().catch(() => null)) as { error?: string } | null;
-          setError(body?.error || `Failed to update access for ${appId}.`);
-          return;
-        }
-
-        const permRes = await apiFetch(`/api/admin/users/${matrixUser.id}/permissions`, {
-          method: 'PUT',
+      if (matrixServiceAdmin !== baseline.is_admin) {
+        const patchRes = await apiFetch(`/api/admin/users/${matrixUser.id}`, {
+          method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ app_id: appId, permissions: nowPerms }),
+          body: JSON.stringify({ is_admin: matrixServiceAdmin }),
         });
-        if (!permRes.ok) {
-          const body = (await permRes.json().catch(() => null)) as { error?: string } | null;
-          setError(body?.error || `Failed to update permissions for ${appId}.`);
+        if (!patchRes.ok) {
+          const body = (await patchRes.json().catch(() => null)) as { error?: string } | null;
+          setError(body?.error || 'Failed to update service admin.');
           return;
         }
       }
 
-      setMessage('Access and permissions updated.');
+      for (const appId of managedGameIds) {
+        const wasOn = baseline.app_access.includes(appId);
+        const nowOn = matrixAccess[appId] === true;
+        if (wasOn !== nowOn) {
+          const accessRes = await apiFetch(
+            `/api/admin/users/${matrixUser.id}/apps/${encodeURIComponent(appId)}`,
+            {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ enabled: nowOn }),
+            },
+          );
+          if (!accessRes.ok) {
+            const body = (await accessRes.json().catch(() => null)) as { error?: string } | null;
+            setError(body?.error || `Failed to update access for ${appId}.`);
+            return;
+          }
+        }
+      }
+
+      for (const appId of managedGameIds) {
+        const nowOn = matrixAccess[appId] === true;
+        if (!nowOn) continue;
+        const wasOnBefore = baseline.app_access.includes(appId);
+        const prevRole = wasOnBefore ? effectiveRoleForApp(baseline, appId) : 'user';
+        const nextRole = matrixRoles[appId] === 'admin' ? 'admin' : 'user';
+        if (prevRole !== nextRole) {
+          const roleRes = await apiFetch(`/api/admin/users/${matrixUser.id}/roles`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              app_id: appId,
+              role: nextRole === 'admin' ? 'admin' : null,
+            }),
+          });
+          if (!roleRes.ok) {
+            const body = (await roleRes.json().catch(() => null)) as { error?: string } | null;
+            setError(body?.error || `Failed to update role for ${appId}.`);
+            return;
+          }
+        }
+      }
+
+      setMessage('Access and roles updated.');
       closeMatrixModal();
       await refreshUsers();
     } catch (caught) {
@@ -331,30 +413,31 @@ export function AdminPage() {
     }
   };
 
-  const createUser = async () => {
+  const submitAddUser = async () => {
     setError(null);
     setMessage(null);
-    const trimmedUsername = newUsername.trim();
+    const trimmedUsername = addUsername.trim();
     if (!trimmedUsername) {
-      setMessage(null);
       setError('Username is required.');
       return;
     }
-    if (!newPassword) {
-      setMessage(null);
+    if (!addPassword) {
       setError('Password is required.');
       return;
     }
+    if (addPassword.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    setAddSubmitting(true);
     try {
       const response = await apiFetch('/api/admin/users', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           username: trimmedUsername,
-          password: newPassword,
-          is_admin: newIsAdmin,
+          password: addPassword,
+          is_admin: false,
         }),
       });
       const body = (await response.json()) as { error?: string };
@@ -363,59 +446,38 @@ export function AdminPage() {
         return;
       }
       setMessage('User created.');
-      setNewUsername('');
-      setNewPassword('');
-      setNewIsAdmin(false);
+      setAddUsername('');
+      setAddPassword('');
+      setAddUserOpen(false);
       await refreshUsers();
     } catch {
       setError('Failed to create user.');
+    } finally {
+      setAddSubmitting(false);
     }
   };
 
-  const toggleAdmin = async (user: AdminUser) => {
+  const confirmDeleteUser = async () => {
+    if (!deleteUser) return;
+    setDeleteSubmitting(true);
     setError(null);
     setMessage(null);
     try {
-      const response = await apiFetch(`/api/admin/users/${user.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ is_admin: !user.is_admin }),
-      });
-      const body = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
-      if (!response.ok) {
-        setError(body?.error || 'Failed to update role.');
-        return;
-      }
-      setMessage('Role updated.');
-      await refreshUsers();
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Network error updating role.');
-    }
-  };
-
-  const deleteUser = async (user: AdminUser) => {
-    if (!window.confirm(`Delete ${user.username}?`)) return;
-    setError(null);
-    setMessage(null);
-    try {
-      const response = await apiFetch(`/api/admin/users/${user.id}`, {
+      const response = await apiFetch(`/api/admin/users/${deleteUser.id}`, {
         method: 'DELETE',
       });
-      const body = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) {
         setError(body?.error || 'Failed to delete user.');
         return;
       }
       setMessage('User deleted.');
+      setDeleteUser(null);
       await refreshUsers();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Network error deleting user.');
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -444,14 +506,10 @@ export function AdminPage() {
     try {
       const response = await apiFetch(`/api/admin/users/${user.id}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ password: value }),
       });
-      const body = (await response.json().catch(() => null)) as {
-        error?: string;
-      } | null;
+      const body = (await response.json().catch(() => null)) as { error?: string } | null;
       if (!response.ok) {
         setError(body?.error || 'Failed to update password.');
         return;
@@ -467,7 +525,6 @@ export function AdminPage() {
     if (!passwordUser || passwordSubmitting) return;
     const nextValue = passwordValue;
     if (!nextValue) {
-      setMessage(null);
       setError('Password is required.');
       return;
     }
@@ -477,60 +534,15 @@ export function AdminPage() {
     });
   };
 
-  function renderPermissionMatrix(appId: string, manageable: boolean) {
-    const on = matrixAccess[appId] === true;
-    const list = matrixPerms[appId] ?? [];
-    const canEdit = manageable && on;
-    return (
-      <div className="mt-3 overflow-x-auto rounded border border-white/10 bg-black/20 p-2">
-        <table className="w-full min-w-[320px] border-collapse text-center text-xs">
-          <thead>
-            <tr className="text-muted">
-              {PERMISSION_COLUMNS.map((col) => (
-                <th key={col} className="px-1 py-1 font-medium capitalize">
-                  {col}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {PERMISSION_COLUMNS.map((col) => {
-                const has = list.includes(col);
-                return (
-                  <td key={col} className="p-1 align-middle">
-                    <button
-                      type="button"
-                      disabled={!canEdit || matrixSubmitting}
-                      className={`min-h-[2rem] w-full min-w-[2.25rem] rounded border px-1 py-1 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                        has
-                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-300'
-                          : 'text-muted border-white/15 bg-white/5 hover:border-white/25'
-                      }`}
-                      aria-pressed={has}
-                      onClick={() => togglePerm(appId, col)}
-                    >
-                      {has ? (
-                        <MaterialSymbol name="check" filled style={{ fontSize: 18 }} />
-                      ) : (
-                        <MaterialSymbol name="close" style={{ fontSize: 18 }} />
-                      )}
-                    </button>
-                  </td>
-                );
-              })}
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    );
-  }
+  const editingSelf = matrixUser !== null && auth.user?.id === matrixUser.id;
 
-  function renderAppBlock(appId: string, label: string, indent: boolean) {
+  function renderAppRow(appId: string, label: string, indent: boolean) {
     const on = matrixAccess[appId] === true;
     const manageable = isAppManageable(appId);
+    const roleId = `admin-matrix-role-${appId}`;
     return (
       <div
+        key={appId}
         className={`border-t border-white/10 py-4 first:border-t-0 first:pt-0 ${indent ? 'ml-1 border-l border-white/10 pl-4' : ''}`}
       >
         <div className="flex flex-wrap items-center gap-3">
@@ -550,15 +562,29 @@ export function AdminPage() {
         </div>
         {!manageable ? (
           <p className="mt-2 text-xs text-amber-400/95">
-            Add <span className="font-mono">{appId}</span> to Auth{' '}
-            <span className="font-mono">APP_LIST</span> to edit access and permissions here (values
-            shown are current).
+            This app id is not in the configured deploy or Codex module list.
           </p>
         ) : null}
-        {on ? (
-          renderPermissionMatrix(appId, manageable)
-        ) : manageable ? (
-          <p className="text-muted mt-2 text-xs">Grant access to configure capabilities.</p>
+        {on && manageable ? (
+          <div className="mt-3 max-w-xs">
+            <label htmlFor={roleId} className="text-muted mb-1 block text-xs">
+              Role
+            </label>
+            <FormSelect
+              id={roleId}
+              value={matrixRoles[appId] ?? 'user'}
+              options={ROLE_OPTIONS}
+              disabled={matrixSubmitting}
+              onChange={(value) =>
+                setMatrixRoles((prev) => ({
+                  ...prev,
+                  [appId]: value,
+                }))
+              }
+            />
+          </div>
+        ) : manageable && !on ? (
+          <p className="text-muted mt-2 text-xs">Grant access to assign a role.</p>
         ) : null}
       </div>
     );
@@ -567,50 +593,17 @@ export function AdminPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <GlassCard className="p-6">
-        <h1 className="text-foreground text-2xl font-semibold">Admin Panel</h1>
-        <p className="text-muted mt-1 text-sm">Manage users, roles, app access, and permissions.</p>
-      </GlassCard>
-
-      <GlassCard className="p-6">
-        <h2 className="text-foreground mb-3 text-lg font-semibold">Create User</h2>
-        <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto_auto] md:items-center">
-          <Input
-            id="auth-admin-new-username"
-            name="username"
-            type="text"
-            placeholder="Username"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            aria-label="New user username"
-          />
-          <Input
-            id="auth-admin-new-password"
-            name="new-password"
-            type="password"
-            placeholder="Password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            aria-label="New user password"
-            autoComplete="new-password"
-          />
-          <label
-            className="text-muted flex items-center gap-2 text-sm"
-            htmlFor="auth-admin-new-is-admin"
-          >
-            <input
-              id="auth-admin-new-is-admin"
-              type="checkbox"
-              checked={newIsAdmin}
-              onChange={(e) => setNewIsAdmin(e.target.checked)}
-            />
-            Admin
-          </label>
-          <Button type="button" variant="accent" onClick={createUser}>
-            Create
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-foreground text-2xl font-semibold">Admin Panel</h1>
+            <p className="text-muted mt-1 text-sm">
+              Manage users, service admin, app access, and per-app roles.
+            </p>
+          </div>
+          <Button type="button" variant="accent" onClick={() => setAddUserOpen(true)}>
+            Add user
           </Button>
         </div>
-        {message ? <p className="mt-3 text-sm text-green-400">{message}</p> : null}
-        {error ? <p className="mt-3 text-sm text-red-400">{error}</p> : null}
       </GlassCard>
 
       <GlassCard className="overflow-hidden p-0">
@@ -620,14 +613,13 @@ export function AdminPage() {
             <thead>
               <tr className="text-muted text-left">
                 <th className="px-4 py-3">User</th>
-                <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td className="text-muted px-4 py-3" colSpan={3}>
+                  <td className="text-muted px-4 py-3" colSpan={2}>
                     Loading users...
                   </td>
                 </tr>
@@ -635,37 +627,8 @@ export function AdminPage() {
                 users.map((user) => (
                   <tr key={user.id} className="border-t border-white/10">
                     <td className="px-4 py-3">{user.username}</td>
-                    <td className="px-4 py-3">{user.is_admin ? 'Admin' : 'User'}</td>
                     <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          type="button"
-                          variant="accent"
-                          className="h-8 px-3 text-xs"
-                          onClick={(event) => openMatrixModal(user, event.currentTarget)}
-                        >
-                          Permissions
-                        </Button>
-                        {auth.user?.id === user.id && user.is_admin ? (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="h-8 px-3 text-xs"
-                            disabled
-                            title="You cannot remove your own admin role."
-                          >
-                            Own admin role
-                          </Button>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="h-8 px-3 text-xs"
-                            onClick={() => toggleAdmin(user)}
-                          >
-                            {user.is_admin ? 'Remove admin' : 'Make admin'}
-                          </Button>
-                        )}
+                      <div className="flex flex-wrap items-center gap-2">
                         <Button
                           type="button"
                           variant="secondary"
@@ -674,12 +637,21 @@ export function AdminPage() {
                         >
                           Change password
                         </Button>
+                        <Button
+                          type="button"
+                          variant="accent"
+                          className="h-8 px-3 text-xs"
+                          onClick={(event) => openMatrixModal(user, event.currentTarget)}
+                        >
+                          Permissions
+                        </Button>
+                        <span className="min-w-[1rem] flex-1" aria-hidden="true" />
                         {auth.user?.id !== user.id ? (
                           <Button
                             type="button"
                             variant="danger"
-                            className="h-8 px-3 text-xs"
-                            onClick={() => deleteUser(user)}
+                            className="h-8 shrink-0 px-3 text-xs"
+                            onClick={() => setDeleteUser(user)}
                           >
                             Delete
                           </Button>
@@ -693,6 +665,145 @@ export function AdminPage() {
           </table>
         </div>
       </GlassCard>
+
+      {message ? <p className="text-sm text-green-400">{message}</p> : null}
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+      {addUserOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-add-user-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !addSubmitting) {
+              setAddUserOpen(false);
+            }
+          }}
+        >
+          <div
+            ref={addUserModalRef}
+            className="w-full max-w-md"
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !addSubmitting) {
+                event.preventDefault();
+                setAddUserOpen(false);
+                return;
+              }
+              trapModalFocus(event, addUserModalRef, focusableSelector, !addSubmitting);
+            }}
+          >
+            <GlassCard className="p-6">
+              <h2 id="admin-add-user-title" className="text-foreground text-lg font-semibold">
+                Add user
+              </h2>
+              <div className="mt-4 grid gap-3">
+                <Input
+                  id="auth-admin-add-username"
+                  name="username"
+                  type="text"
+                  placeholder="Username"
+                  value={addUsername}
+                  onChange={(e) => setAddUsername(e.target.value)}
+                  aria-label="New user username"
+                />
+                <Input
+                  id={addPasswordInputId}
+                  name="new-password"
+                  type="password"
+                  placeholder="Password"
+                  value={addPassword}
+                  onChange={(e) => setAddPassword(e.target.value)}
+                  aria-label="New user password"
+                  autoComplete="new-password"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      void submitAddUser();
+                    }
+                  }}
+                />
+              </div>
+              <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setAddUserOpen(false)}
+                  disabled={addSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="accent"
+                  onClick={() => void submitAddUser()}
+                  disabled={addSubmitting}
+                >
+                  {addSubmitting ? 'Creating...' : 'Create'}
+                </Button>
+              </div>
+            </GlassCard>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteUser ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="admin-delete-title"
+          onClick={(event) => {
+            if (event.target === event.currentTarget && !deleteSubmitting) {
+              setDeleteUser(null);
+            }
+          }}
+        >
+          <div
+            ref={deleteModalRef}
+            className="w-full max-w-md"
+            tabIndex={-1}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !deleteSubmitting) {
+                event.preventDefault();
+                setDeleteUser(null);
+                return;
+              }
+              trapModalFocus(event, deleteModalRef, focusableSelector, !deleteSubmitting);
+            }}
+          >
+            <GlassCard className="p-6">
+              <h2 id="admin-delete-title" className="text-foreground text-lg font-semibold">
+                Delete user
+              </h2>
+              <p className="text-muted mt-2 text-sm">
+                Permanently delete{' '}
+                <span className="text-foreground font-medium">{deleteUser.username}</span>? This
+                cannot be undone.
+              </p>
+              <div className="mt-4 flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => setDeleteUser(null)}
+                  disabled={deleteSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="danger"
+                  onClick={() => void confirmDeleteUser()}
+                  disabled={deleteSubmitting}
+                >
+                  {deleteSubmitting ? 'Deleting...' : 'Delete'}
+                </Button>
+              </div>
+            </GlassCard>
+          </div>
+        </div>
+      ) : null}
 
       {passwordUser ? (
         <div
@@ -710,49 +821,13 @@ export function AdminPage() {
             ref={passwordModalRef}
             className="w-full max-w-md"
             tabIndex={-1}
-            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+            onKeyDown={(event) => {
               if (event.key === 'Escape' && !passwordSubmitting) {
                 event.preventDefault();
                 closePasswordModal();
                 return;
               }
-
-              if (event.key !== 'Tab') {
-                return;
-              }
-
-              const focusableElements = getPasswordModalFocusableElements();
-              if (focusableElements.length === 0) {
-                event.preventDefault();
-                passwordModalRef.current?.focus();
-                return;
-              }
-
-              const firstElement = focusableElements[0];
-              const lastElement = focusableElements[focusableElements.length - 1];
-              const activeElement = document.activeElement as HTMLElement | null;
-              const modalElement = passwordModalRef.current;
-
-              if (event.shiftKey) {
-                if (
-                  !activeElement ||
-                  activeElement === firstElement ||
-                  !modalElement?.contains(activeElement)
-                ) {
-                  event.preventDefault();
-                  lastElement.focus();
-                }
-                return;
-              }
-
-              if (
-                !activeElement ||
-                activeElement === lastElement ||
-                !modalElement?.contains(activeElement)
-              ) {
-                event.preventDefault();
-                firstElement.focus();
-              }
+              trapModalFocus(event, passwordModalRef, focusableSelector, !passwordSubmitting);
             }}
           >
             <GlassCard className="p-6">
@@ -816,69 +891,49 @@ export function AdminPage() {
             ref={matrixModalRef}
             className="max-h-[90vh] w-full max-w-4xl overflow-y-auto"
             tabIndex={-1}
-            onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+            onKeyDown={(event) => {
               if (event.key === 'Escape' && !matrixSubmitting) {
                 event.preventDefault();
                 closeMatrixModal();
                 return;
               }
-
-              if (event.key !== 'Tab') {
-                return;
-              }
-
-              const focusableElements = getMatrixModalFocusableElements();
-              if (focusableElements.length === 0) {
-                event.preventDefault();
-                matrixModalRef.current?.focus();
-                return;
-              }
-
-              const firstElement = focusableElements[0];
-              const lastElement = focusableElements[focusableElements.length - 1];
-              const activeElement = document.activeElement as HTMLElement | null;
-              const modalElement = matrixModalRef.current;
-
-              if (event.shiftKey) {
-                if (
-                  !activeElement ||
-                  activeElement === firstElement ||
-                  !modalElement?.contains(activeElement)
-                ) {
-                  event.preventDefault();
-                  lastElement.focus();
-                }
-                return;
-              }
-
-              if (
-                !activeElement ||
-                activeElement === lastElement ||
-                !modalElement?.contains(activeElement)
-              ) {
-                event.preventDefault();
-                firstElement.focus();
-              }
+              trapModalFocus(event, matrixModalRef, focusableSelector, !matrixSubmitting);
             }}
           >
             <GlassCard className="p-6">
               <h2 id="admin-matrix-title" className="text-foreground text-lg font-semibold">
-                Access & permissions — {matrixUser.username}
+                Permissions — {matrixUser.username}
               </h2>
               <p className="text-muted mt-2 text-sm">
-                Toggle each app to grant access, then set capabilities. Codex modules (games) are
-                listed under Codex; you can edit them only if each module id is also in Auth{' '}
-                <span className="text-foreground/80 font-mono">APP_LIST</span> (configure on the
-                server). Module ids come from{' '}
-                <span className="text-foreground/80 font-mono">CODEX_MODULE_APP_IDS</span> (default
-                warframe, epic7).
+                Service administrators can manage users on this Auth deployment. Per-app roles apply
+                when the user has access to that app or Codex submodule.
               </p>
+
+              <div className="mt-6 border-b border-white/10 pb-4">
+                <label className="text-foreground flex cursor-pointer items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    className="rounded border-white/30"
+                    checked={matrixServiceAdmin}
+                    disabled={matrixSubmitting}
+                    onChange={(e) => {
+                      if (matrixSubmitting) return;
+                      if (editingSelf && matrixUser.is_admin && !e.target.checked) return;
+                      setMatrixServiceAdmin(e.target.checked);
+                    }}
+                  />
+                  <span>Auth service administrator</span>
+                </label>
+                {editingSelf && matrixUser.is_admin ? (
+                  <p className="text-muted mt-2 text-xs">
+                    You cannot remove your own service admin role from here.
+                  </p>
+                ) : null}
+              </div>
 
               <div className="mt-6 space-y-2">
                 {standaloneAppIds.map((appId) => (
-                  <div key={appId}>
-                    {renderAppBlock(appId, MODULE_LABELS[appId] ?? appId, false)}
-                  </div>
+                  <div key={appId}>{renderAppRow(appId, MODULE_LABELS[appId] ?? appId, false)}</div>
                 ))}
 
                 {codexGroupVisible ? (
@@ -887,11 +942,11 @@ export function AdminPage() {
                       Codex
                     </h3>
                     {adminAppIds.includes('codex')
-                      ? renderAppBlock('codex', MODULE_LABELS.codex ?? 'Codex', false)
+                      ? renderAppRow('codex', MODULE_LABELS.codex ?? 'Codex', false)
                       : null}
                     {codexModuleIds.map((appId) => (
                       <div key={appId}>
-                        {renderAppBlock(appId, MODULE_LABELS[appId] ?? appId, true)}
+                        {renderAppRow(appId, MODULE_LABELS[appId] ?? appId, true)}
                       </div>
                     ))}
                   </div>

@@ -15,11 +15,11 @@ import { AUTH_API_RATE_LIMIT_MAX, AUTH_API_RATE_LIMIT_WINDOW_MS } from '../confi
 import {
   appendAuditLog,
   db,
+  getAppRoleAssignmentsForUser,
   getGamesForUser,
   getUserById,
   getUserByUsername,
   hasAppAccess,
-  listPermissions,
 } from '../db/authDb.js';
 
 const DUMMY_PASSWORD_HASH =
@@ -194,9 +194,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
     }
 
     const gameAccess = appId ? hasAppAccess(userId, appId) : true;
-    const permissions = listPermissions(userId, appId ?? undefined).map(
-      (row) => `${row.app_id}:${row.permission}`,
-    );
+    const app_roles = getAppRoleAssignmentsForUser(userId);
 
     res.json({
       authenticated: true,
@@ -210,7 +208,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
       },
       app_access: getGamesForUser(userId),
       apps: buildAppCards(userId),
-      permissions,
+      app_roles,
     });
   });
 

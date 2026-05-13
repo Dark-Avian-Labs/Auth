@@ -12,12 +12,19 @@ type FormSelectProps<T extends string> = {
   value: T;
   options: FormSelectOption<T>[];
   onChange: (value: T) => void;
+  disabled?: boolean;
 };
 
 const WINDOW_REPOSITION_LISTENERS: AddEventListenerOptions = { capture: true, passive: true };
 const WINDOW_RESIZE_LISTENERS: AddEventListenerOptions = { passive: true };
 
-export function FormSelect<T extends string>({ id, value, options, onChange }: FormSelectProps<T>) {
+export function FormSelect<T extends string>({
+  id,
+  value,
+  options,
+  onChange,
+  disabled = false,
+}: FormSelectProps<T>) {
   const listboxId = useId();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -37,7 +44,7 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
   }, []);
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open || disabled) return;
     updateMenuPosition();
     window.addEventListener('resize', updateMenuPosition, WINDOW_RESIZE_LISTENERS);
     window.addEventListener('scroll', updateMenuPosition, WINDOW_REPOSITION_LISTENERS);
@@ -45,10 +52,14 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
       window.removeEventListener('resize', updateMenuPosition, WINDOW_RESIZE_LISTENERS);
       window.removeEventListener('scroll', updateMenuPosition, WINDOW_REPOSITION_LISTENERS);
     };
-  }, [open, updateMenuPosition]);
+  }, [open, updateMenuPosition, disabled]);
 
   useEffect(() => {
-    if (!open) return;
+    if (disabled) setOpen(false);
+  }, [disabled]);
+
+  useEffect(() => {
+    if (!open || disabled) return;
     const onDocPointer = (e: MouseEvent | PointerEvent) => {
       const target = e.target;
       if (!target || !(target instanceof Node)) {
@@ -67,44 +78,45 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
       document.removeEventListener('pointerdown', onDocPointer);
       document.removeEventListener('keydown', onKey);
     };
-  }, [open, close]);
+  }, [open, close, disabled]);
 
-  const menu = open ? (
-    <ul
-      ref={menuRef}
-      id={listboxId}
-      role="listbox"
-      aria-labelledby={id}
-      style={{
-        position: 'fixed',
-        top: menuPos.top,
-        left: menuPos.left,
-        width: menuPos.width,
-      }}
-      className="border-glass-border bg-glass-hover/95 z-dropdown max-h-60 overflow-auto rounded-lg border p-1 shadow-[var(--shadow-panel)] backdrop-blur-md"
-    >
-      {options.map((opt) => (
-        <li key={opt.value} role="presentation">
-          <button
-            type="button"
-            role="option"
-            aria-selected={opt.value === value}
-            className={clsx(
-              'user-menu-item text-left',
-              opt.value === value && 'bg-glass-active text-foreground',
-            )}
-            onClick={() => {
-              onChange(opt.value);
-              close();
-              triggerRef.current?.focus();
-            }}
-          >
-            {opt.label}
-          </button>
-        </li>
-      ))}
-    </ul>
-  ) : null;
+  const menu =
+    open && !disabled ? (
+      <ul
+        ref={menuRef}
+        id={listboxId}
+        role="listbox"
+        aria-labelledby={id}
+        style={{
+          position: 'fixed',
+          top: menuPos.top,
+          left: menuPos.left,
+          width: menuPos.width,
+        }}
+        className="border-glass-border bg-glass-hover/95 z-dropdown max-h-60 overflow-auto rounded-lg border p-1 shadow-[var(--shadow-panel)] backdrop-blur-md"
+      >
+        {options.map((opt) => (
+          <li key={opt.value} role="presentation">
+            <button
+              type="button"
+              role="option"
+              aria-selected={opt.value === value}
+              className={clsx(
+                'user-menu-item text-left',
+                opt.value === value && 'bg-glass-active text-foreground',
+              )}
+              onClick={() => {
+                onChange(opt.value);
+                close();
+                triggerRef.current?.focus();
+              }}
+            >
+              {opt.label}
+            </button>
+          </li>
+        ))}
+      </ul>
+    ) : null;
 
   return (
     <div ref={rootRef} className="relative">
@@ -112,12 +124,20 @@ export function FormSelect<T extends string>({ id, value, options, onChange }: F
         ref={triggerRef}
         type="button"
         id={id}
-        className="form-input flex w-full cursor-pointer items-center justify-between gap-2 text-left"
+        className={clsx(
+          'form-input flex w-full items-center justify-between gap-2 text-left',
+          disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+        )}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
-        onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          setOpen((o) => !o);
+        }}
         onKeyDown={(e) => {
+          if (disabled) return;
           if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             setOpen(true);

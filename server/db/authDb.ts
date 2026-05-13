@@ -38,11 +38,11 @@ export function createSchema(): void {
       expire TEXT NOT NULL
     );
 
-    CREATE TABLE IF NOT EXISTS user_app_permissions (
+    CREATE TABLE IF NOT EXISTS user_app_roles (
       user_id INTEGER NOT NULL,
       app_id TEXT NOT NULL,
-      permission TEXT NOT NULL,
-      PRIMARY KEY (user_id, app_id, permission),
+      role TEXT NOT NULL CHECK (role IN ('user', 'admin')),
+      PRIMARY KEY (user_id, app_id),
       FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
@@ -59,8 +59,8 @@ export function createSchema(): void {
 
     CREATE INDEX IF NOT EXISTS idx_user_game_access_user_id
       ON user_game_access(user_id);
-    CREATE INDEX IF NOT EXISTS idx_user_app_permissions_user_app
-      ON user_app_permissions(user_id, app_id);
+    CREATE INDEX IF NOT EXISTS idx_user_app_roles_user_id
+      ON user_app_roles(user_id);
     CREATE INDEX IF NOT EXISTS idx_audit_log_created_at
       ON audit_log(created_at);
   `);
@@ -164,59 +164,58 @@ export function setAppAccess(userId: number, appId: string, enabled: boolean): v
     return;
   }
   db.prepare('DELETE FROM user_game_access WHERE user_id = ? AND game_id = ?').run(userId, appId);
+  db.prepare('DELETE FROM user_app_roles WHERE user_id = ? AND app_id = ?').run(userId, appId);
 }
 
-export function listPermissions(
-  userId: number,
-  appId?: string,
-): Array<{ app_id: string; permission: string }> {
-  if (!appId) {
-    return db
-      .prepare(
-        'SELECT app_id, permission FROM user_app_permissions WHERE user_id = ? ORDER BY app_id, permission',
-      )
-      .all(userId) as Array<{ app_id: string; permission: string }>;
-  }
+export type AppRole = 'user' | 'admin';
+
+export function listAppRolesForUser(userId: number): Array<{ app_id: string; role: AppRole }> {
   return db
-    .prepare(
-      'SELECT app_id, permission FROM user_app_permissions WHERE user_id = ? AND (app_id = ? OR app_id = ?) ORDER BY app_id, permission',
-    )
-    .all(userId, appId, '*') as Array<{ app_id: string; permission: string }>;
+    .prepare('SELECT app_id, role FROM user_app_roles WHERE user_id = ? ORDER BY app_id')
+    .all(userId) as Array<{ app_id: string; role: AppRole }>;
 }
 
-export function listPermissionsForUsers(
+export function listAppRolesForUsers(
   userIds: number[],
-): Record<number, Array<{ app_id: string; permission: string }>> {
+): Record<number, Array<{ app_id: string; role: AppRole }>> {
   return queryAndGroupByUserId<
-    { user_id: number; app_id: string; permission: string },
-    { app_id: string; permission: string }
+    { user_id: number; app_id: string; role: string },
+    { app_id: string; role: AppRole }
   >(
     userIds,
-    (placeholders) => `SELECT user_id, app_id, permission
-       FROM user_app_permissions
+    (placeholders) => `SELECT user_id, app_id, role
+       FROM user_app_roles
        WHERE user_id IN (${placeholders})
-       ORDER BY user_id, app_id, permission`,
+       ORDER BY user_id, app_id`,
     (row) => ({
       app_id: row.app_id,
-      permission: row.permission,
+      role: row.role === 'admin' ? 'admin' : 'user',
     }),
   );
 }
 
-export function replacePermissions(userId: number, appId: string, permissions: string[]): void {
-  const tx = db.transaction(() => {
-    db.prepare('DELETE FROM user_app_permissions WHERE user_id = ? AND app_id = ?').run(
-      userId,
-      appId,
-    );
-    const insert = db.prepare(
-      'INSERT OR IGNORE INTO user_app_permissions (user_id, app_id, permission) VALUES (?, ?, ?)',
-    );
-    for (const permission of permissions) {
-      insert.run(userId, appId, permission);
-    }
-  });
-  tx();
+export function getAppRoleAssignmentsForUser(
+  userId: number,
+): Array<{ app_id: string; role: AppRole }> {
+  const games = getGamesForUser(userId);
+  const rows = listAppRolesForUser(userId);
+  const byApp = new Map(rows.map((r) => [r.app_id, r.role]));
+  return games.map((app_id) => ({
+    app_id,
+    role: byApp.get(app_id) === 'admin' ? 'admin' : 'user',
+  }));
+}
+
+export function setUserAppRole(userId: number, appId: string, role: AppRole | null): void {
+  if (role === null || role === 'user') {
+    db.prepare('DELETE FROM user_app_roles WHERE user_id = ? AND app_id = ?').run(userId, appId);
+    return;
+  }
+  db.prepare('INSERT OR REPLACE INTO user_app_roles (user_id, app_id, role) VALUES (?, ?, ?)').run(
+    userId,
+    appId,
+    role,
+  );
 }
 
 export function appendAuditLog(params: {

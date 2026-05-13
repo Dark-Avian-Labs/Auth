@@ -8,21 +8,15 @@ import {
   db,
   getGamesForUsers,
   getUserById,
-  listPermissionsForUsers,
-  replacePermissions,
+  listAppRolesForUsers,
   setAppAccess,
+  setUserAppRole,
+  type AppRole,
 } from '../db/authDb.js';
 
 export const adminApiRouter = Router();
-const ALLOWED_PERMISSIONS = new Set<string>([
-  'read',
-  'write',
-  'create',
-  'update',
-  'delete',
-  'admin',
-]);
-const ALLOWED_APP_IDS = new Set<string>(APP_LIST);
+
+const MANAGED_GAME_IDS = new Set<string>([...APP_LIST, ...CODEX_MODULE_APP_IDS]);
 
 const adminLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -61,12 +55,12 @@ adminApiRouter.get('/users', (_req: Request, res: Response) => {
   }>;
   const userIds = users.map((user) => user.id);
   const gamesByUserId = getGamesForUsers(userIds);
-  const permissionsByUserId = listPermissionsForUsers(userIds);
+  const rolesByUserId = listAppRolesForUsers(userIds);
   const payload = users.map((user) => ({
     ...user,
     is_admin: Boolean(user.is_admin),
     app_access: gamesByUserId[user.id] ?? [],
-    permissions: permissionsByUserId[user.id] ?? [],
+    app_roles: rolesByUserId[user.id] ?? [],
   }));
   res.json({
     users: payload,
@@ -246,7 +240,7 @@ adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {
     res.status(400).json({ error: 'Invalid user id or app id' });
     return;
   }
-  if (!ALLOWED_APP_IDS.has(appId)) {
+  if (!MANAGED_GAME_IDS.has(appId)) {
     res.status(400).json({ error: 'Unknown app id' });
     return;
   }
@@ -268,20 +262,18 @@ adminApiRouter.put('/users/:id/apps/:appId', (req: Request, res: Response) => {
   res.json({ success: true });
 });
 
-adminApiRouter.put('/users/:id/permissions', (req: Request, res: Response) => {
+adminApiRouter.put('/users/:id/roles', (req: Request, res: Response) => {
   const userId = parseInt(String(req.params.id), 10);
   const appId = String(req.body?.app_id ?? '')
     .trim()
     .toLowerCase();
-  const rawPermissions: unknown[] = Array.isArray(req.body?.permissions)
-    ? req.body.permissions
-    : [];
+  const rawRole = req.body?.role;
 
   if (!Number.isInteger(userId) || userId <= 0 || !appId) {
     res.status(400).json({ error: 'Invalid user id or app_id' });
     return;
   }
-  if (!ALLOWED_APP_IDS.has(appId)) {
+  if (!MANAGED_GAME_IDS.has(appId)) {
     res.status(400).json({ error: 'Unknown app_id' });
     return;
   }
@@ -291,40 +283,31 @@ adminApiRouter.put('/users/:id/permissions', (req: Request, res: Response) => {
     return;
   }
 
-  const hasInvalidType = rawPermissions.some((value) => typeof value !== 'string');
-  if (hasInvalidType) {
-    res.status(400).json({ error: 'permissions must be an array of strings' });
+  let role: AppRole | null = null;
+  if (rawRole === null || rawRole === undefined) {
+    role = null;
+  } else if (typeof rawRole === 'string') {
+    const normalized = rawRole.trim().toLowerCase();
+    if (normalized === 'user' || normalized === '') {
+      role = 'user';
+    } else if (normalized === 'admin') {
+      role = 'admin';
+    } else {
+      res.status(400).json({ error: 'role must be user, admin, or null' });
+      return;
+    }
+  } else {
+    res.status(400).json({ error: 'role must be user, admin, or null' });
     return;
   }
-  const normalizedPermissions = (rawPermissions as string[]).map((value) =>
-    value.trim().toLowerCase(),
-  );
 
-  const unknownPermissions = normalizedPermissions.filter(
-    (permission) => permission.length > 0 && !ALLOWED_PERMISSIONS.has(permission),
-  );
-  if (unknownPermissions.length > 0) {
-    res.status(400).json({
-      error: `Unknown permissions: ${Array.from(new Set(unknownPermissions)).join(', ')}`,
-    });
-    return;
-  }
-
-  const validatedPermissions: string[] = Array.from(
-    new Set(
-      normalizedPermissions.filter(
-        (permission) => permission.length > 0 && ALLOWED_PERMISSIONS.has(permission),
-      ),
-    ),
-  );
-
-  replacePermissions(userId, appId, validatedPermissions);
+  setUserAppRole(userId, appId, role);
   appendAuditLog({
     actorUserId: req.session.user_id!,
-    eventType: 'admin.user.permissions.update',
+    eventType: 'admin.user.roles.update',
     targetType: 'user',
     targetId: String(userId),
-    detailsJson: JSON.stringify({ appId, permissions: validatedPermissions }),
+    detailsJson: JSON.stringify({ appId, role }),
     ip: requestIp(req),
   });
   res.json({ success: true });

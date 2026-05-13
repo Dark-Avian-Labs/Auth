@@ -2,6 +2,7 @@ import { Router, type NextFunction, type Request, type Response } from 'express'
 import { rateLimit } from 'express-rate-limit';
 
 import { hashPassword, requestIp, requireAdmin, revokeSessionsForUser } from '../auth/service.js';
+import { sanitizeUsername } from '../auth/username.js';
 import { APP_LIST, CODEX_MODULE_APP_IDS } from '../config.js';
 import {
   appendAuditLog,
@@ -26,14 +27,6 @@ const adminLimiter = rateLimit({
 });
 
 adminApiRouter.use(adminLimiter, requireAdmin);
-
-function sanitizeUsername(raw: string): string {
-  const normalized = raw.normalize('NFKC').trim().toLowerCase().replace(/\s+/g, '');
-  if (!/^[a-z0-9._-]{3,40}$/.test(normalized)) {
-    return '';
-  }
-  return normalized;
-}
 
 function isSqliteConstraintError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {

@@ -11,6 +11,7 @@ import {
   sanitizeNextUrl,
   verifyPassword,
 } from '../auth/service.js';
+import { sanitizeUsername } from '../auth/username.js';
 import { AUTH_API_RATE_LIMIT_MAX, AUTH_API_RATE_LIMIT_WINDOW_MS } from '../config.js';
 import {
   appendAuditLog,
@@ -87,7 +88,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
   });
 
   authRouter.post('/login', loginLimiter, async (req: Request, res: Response) => {
-    const username = String(req.body?.username ?? '').trim();
+    const username = sanitizeUsername(String(req.body?.username ?? ''));
     const password = String(req.body?.password ?? '');
     const nextInput =
       typeof req.body?.next === 'string' && req.body.next.length > 0 ? req.body.next : '';
@@ -105,7 +106,7 @@ export function createAuthApiRouter(csrfToken: (req: Request) => string) {
         actorUserId: null,
         eventType: 'auth.login.failed',
         targetType: 'user',
-        targetId: username.toLowerCase(),
+        targetId: username,
         detailsJson: JSON.stringify({ reason: 'user_not_found' }),
         ip: requestIp(req),
       });

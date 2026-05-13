@@ -14,9 +14,9 @@ import { MaterialSymbol } from '../../components/ui/MaterialSymbol';
 import { Menu } from '../../components/ui/Menu';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../features/auth/AuthContext';
-import { useStaleBundlePrompt } from '../../hooks/useStaleBundlePrompt';
 import { AsciiWaveBackground } from './AsciiWaveBackground';
 import { SearchBar } from './SearchBar';
+import { StaleClientUpdateBanner } from './StaleClientUpdateBanner';
 
 export function Layout() {
   const { mode, toggleMode } = useTheme();
@@ -80,8 +80,6 @@ export function Layout() {
 
   const isLoggedIn = auth.status === 'ok' && auth.user !== null;
   const isAdmin = auth.user?.is_admin === true;
-  const bundleStale = useStaleBundlePrompt(APP_VERSION);
-
   return (
     <div className="flex min-h-screen flex-col">
       <a href="#main-content" className="skip-link">
@@ -116,17 +114,6 @@ export function Layout() {
               >
                 v{APP_VERSION}
               </span>
-              {bundleStale ? (
-                <button
-                  type="button"
-                  className="text-muted hover:text-foreground rounded px-1.5 py-0.5 font-mono text-[10px] leading-none tracking-wide underline decoration-current/25 underline-offset-2 transition-colors hover:decoration-current/45"
-                  onClick={() => {
-                    window.location.reload();
-                  }}
-                >
-                  Reload
-                </button>
-              ) : null}
             </div>
           </div>
 
@@ -248,6 +235,8 @@ export function Layout() {
           </a>
         </div>
       </footer>
+
+      <StaleClientUpdateBanner appVersion={APP_VERSION} />
     </div>
   );
 }

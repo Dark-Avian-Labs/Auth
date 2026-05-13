@@ -91,7 +91,7 @@ export type UserRow = {
 export function getUserByUsername(username: string): UserRow | undefined {
   return db
     .prepare(
-      'SELECT id, username, password_hash, is_admin, display_name, email, created_at FROM users WHERE username = ?',
+      'SELECT id, username, password_hash, is_admin, display_name, email, created_at FROM users WHERE username = ? COLLATE NOCASE',
     )
     .get(username.trim()) as UserRow | undefined;
 }

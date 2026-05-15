@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@dotenvx/dotenvx':
-        specifier: ^1.65.0
-        version: 1.65.0
+        specifier: ^1.65.2
+        version: 1.65.2
       '@fontsource-variable/cascadia-mono':
         specifier: ^5.2.2
         version: 5.2.2
@@ -244,8 +244,8 @@ packages:
     resolution: {integrity: sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==}
     engines: {node: '>=20.19.0'}
 
-  '@dotenvx/dotenvx@1.65.0':
-    resolution: {integrity: sha512-v4FA/Lw3pTEloLxBqTOaYDX6MNo0Jo7lGBsPZhwnJBqRJp0AzQg1ZZNxrFsh6HVC6QWeWrfIKLn0y2eyIXaVDg==}
+  '@dotenvx/dotenvx@1.65.2':
+    resolution: {integrity: sha512-ZlVNup/3xZJS+2LqCgk7uh48Jz1z/Km27A7cBE5m3dXpjI+KHsyxrgAHmyoP/BBscH379yefAzeuny2akBq9zA==}
     hasBin: true
 
   '@ecies/ciphers@0.2.6':
@@ -3130,7 +3130,7 @@ snapshots:
 
   '@csstools/css-tokenizer@4.0.0': {}
 
-  '@dotenvx/dotenvx@1.65.0':
+  '@dotenvx/dotenvx@1.65.2':
     dependencies:
       commander: 11.1.0
       dotenv: 17.4.2

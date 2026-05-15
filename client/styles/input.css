@@ -20,8 +20,9 @@
   --color-muted: oklch(82% 0.015 286);
 
   --color-accent: oklch(56% 0.24 278);
-  --color-success: oklch(72% 0.17 163);
-  --color-danger: oklch(71% 0.17 22);
+  --color-success: oklch(72% 0.19 145);
+  --color-warning: oklch(76% 0.16 75);
+  --color-danger: oklch(63% 0.2 25);
 
   --color-glass: oklch(100% 0 0 / 0.024);
   --color-glass-border: oklch(100% 0 0 / 0.08);

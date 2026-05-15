@@ -211,7 +211,7 @@ export function Layout() {
           </div>
         </div>
         {logoutError ? (
-          <p className="mt-1 text-right text-sm text-red-400" role="alert">
+          <p className="text-danger mt-1 text-right text-sm" role="alert">
             {logoutError}
           </p>
         ) : null}

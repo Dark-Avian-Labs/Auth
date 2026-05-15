@@ -561,7 +561,7 @@ export function AdminPage() {
           <span className="text-muted font-mono text-xs">{appId}</span>
         </div>
         {!manageable ? (
-          <p className="mt-2 text-xs text-amber-400/95">
+          <p className="text-warning/95 mt-2 text-xs">
             This app id is not in the configured deploy or Codex module list.
           </p>
         ) : null}
@@ -607,7 +607,7 @@ export function AdminPage() {
       </GlassCard>
 
       <GlassCard className="overflow-hidden p-0">
-        {usersError ? <p className="px-4 pt-4 text-sm text-red-400">{usersError}</p> : null}
+        {usersError ? <p className="text-danger px-4 pt-4 text-sm">{usersError}</p> : null}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -666,8 +666,8 @@ export function AdminPage() {
         </div>
       </GlassCard>
 
-      {message ? <p className="text-sm text-green-400">{message}</p> : null}
-      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+      {message ? <p className="text-success text-sm">{message}</p> : null}
+      {error ? <p className="text-danger text-sm">{error}</p> : null}
 
       {addUserOpen ? (
         <div

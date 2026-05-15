@@ -96,7 +96,7 @@ export function LoginPage() {
             placeholder="Password"
           />
           {error ? (
-            <p className="text-sm text-red-400" role="alert" aria-atomic="true">
+            <p className="text-danger text-sm" role="alert" aria-atomic="true">
               {error}
             </p>
           ) : null}

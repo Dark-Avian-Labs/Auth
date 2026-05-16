@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, Outlet } from 'react-router-dom';
 
-import feathers from '../../../feathers.png';
 import {
   APP_DISPLAY_NAME,
   APP_DISPLAY_NAME_2,
@@ -10,6 +9,7 @@ import {
   LEGAL_PAGE_URL,
 } from '../../app/config';
 import { APP_PATHS } from '../../app/paths';
+import feathers from '../../assets/feathers.svg';
 import { MaterialSymbol } from '../../components/ui/MaterialSymbol';
 import { Menu } from '../../components/ui/Menu';
 import { useTheme } from '../../context/ThemeContext';

@@ -1,6 +1,6 @@
 {
   "name": "auth",
-  "version": "1.26.6",
+  "version": "1.26.7",
   "private": true,
   "description": "Dark Avian LABS Auth Service",
   "license": "MIT",

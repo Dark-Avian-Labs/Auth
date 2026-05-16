@@ -22,7 +22,9 @@ export function SearchBar({ onSearch }: SearchBarProps) {
       <input
         id="auth-header-search"
         name="search"
-        type="search"
+        type="text"
+        role="searchbox"
+        enterKeyHint="search"
         autoComplete="off"
         className="search-box w-52"
         aria-label="Search"

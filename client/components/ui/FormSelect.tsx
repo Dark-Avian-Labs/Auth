@@ -2,6 +2,8 @@ import clsx from 'clsx';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
+import { MaterialSymbol } from './MaterialSymbol';
+
 export type FormSelectOption<T extends string = string> = {
   value: T;
   label: string;
@@ -145,18 +147,14 @@ export function FormSelect<T extends string>({
         }}
       >
         <span className="min-w-0 truncate">{current?.label ?? 'Select an option'}</span>
-        <svg
-          className={clsx('text-muted h-4 w-4 shrink-0 transition-transform', open && 'rotate-180')}
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden={true}
-        >
-          <path
-            fillRule="evenodd"
-            d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-            clipRule="evenodd"
-          />
-        </svg>
+        <MaterialSymbol
+          name="expand_more"
+          className={clsx(
+            'text-muted shrink-0 transition-transform leading-none',
+            open && 'rotate-180',
+          )}
+          style={{ fontSize: 16 }}
+        />
       </button>
       {menu ? createPortal(menu, document.body) : null}
     </div>

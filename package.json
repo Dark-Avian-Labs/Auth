@@ -17,8 +17,7 @@
     "format": "oxfmt --write .",
     "check-format": "oxfmt --check .",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@dotenvx/dotenvx": "^1.66.0",
@@ -57,7 +56,6 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
-    "@vitest/coverage-v8": "^4.1.6",
     "jsdom": "^29.1.1",
     "oxfmt": "^0.50.0",
     "oxlint": "^1.65.0",
@@ -71,5 +69,5 @@
     "node": ">=25.0.0",
     "pnpm": ">=11.0.0"
   },
-  "packageManager": "pnpm@11.1.2"
+  "packageManager": "pnpm@11.1.3"
 }

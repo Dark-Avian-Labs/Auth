@@ -132,4 +132,5 @@ Rules:
 - **v1.26.6** `chore` [#133](https://github.com/Dark-Avian-Labs/Auth/pull/133): MaterialSymbol in FormSelect
 - **v1.26.7** `chore` [#134](https://github.com/Dark-Avian-Labs/Auth/pull/134): feathers icon PNG → SVG in Layout
 - **v1.26.8** `chore(deps)` [#135](https://github.com/Dark-Avian-Labs/Auth/pull/135): update oxfmt and oxlint
-- **v1.26.9** `chore`: Update dependencies
+- **v1.26.9** `chore` [#136](https://github.com/Dark-Avian-Labs/Auth/pull/136): Update dependencies
+- **v1.26.10** `chore(quality)` [#137](https://github.com/Dark-Avian-Labs/Auth/pull/137): Composer & Coderabbit audit

@@ -8,6 +8,7 @@ process.env.APP_LIST ??= 'armory,codex';
 process.env.CENTRAL_DB_PATH = path.join(process.cwd(), 'data', 'auth.test.db');
 
 process.env.APP_PUBLIC_BASE_URL ??= 'https://auth.example.test';
+process.env.SESSION_SECRET ??= 'auth-dev-only-session-secret-32char';
 
 try {
   const { createSchema, migrateSchema } = await import('../db/authDb.js');

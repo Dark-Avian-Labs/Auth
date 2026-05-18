@@ -70,16 +70,19 @@ export const CENTRAL_DB_PATH = process.env.CENTRAL_DB_PATH || path.join(DATA_DIR
 
 const _port = parseInt(process.env.PORT || '3000', 10);
 export const PORT = Number.isFinite(_port) && _port > 0 ? _port : 3000;
+export const SHUTDOWN_TIMEOUT_MS = parsePositiveIntEnv(process.env.SHUTDOWN_TIMEOUT_MS, 10_000);
 export const HOST = process.env.HOST || '127.0.0.1';
 export const APP_NAME = process.env.APP_NAME?.trim() || 'Dark Avian LABS';
 export const APP_ID = process.env.APP_ID?.trim() || 'auth';
 export const NODE_ENV = process.env.NODE_ENV || 'development';
 
-const DEFAULT_SESSION_SECRET = 'auth-dev-secret-change-me';
-export const SESSION_SECRET = process.env.SESSION_SECRET || DEFAULT_SESSION_SECRET;
-if (NODE_ENV === 'production' && SESSION_SECRET === DEFAULT_SESSION_SECRET) {
-  throw new Error('SESSION_SECRET must be set in production.');
+const DEV_SESSION_SECRET = 'auth-dev-only-session-secret-32char';
+const rawSessionSecret =
+  process.env.SESSION_SECRET?.trim() || (NODE_ENV === 'production' ? '' : DEV_SESSION_SECRET);
+if (NODE_ENV === 'production' && rawSessionSecret.length < 32) {
+  throw new Error('SESSION_SECRET must be set and at least 32 characters in production.');
 }
+export const SESSION_SECRET = rawSessionSecret;
 
 function parseBooleanEnv(value: string | undefined): boolean | undefined {
   if (value == null) return undefined;

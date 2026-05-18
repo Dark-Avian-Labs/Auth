@@ -129,3 +129,7 @@ Rules:
 - **v1.26.3** `fix` [#129](https://github.com/Dark-Avian-Labs/Auth/pull/129): login + refresh control behavior
 - **v1.26.4** `fix` [#131](https://github.com/Dark-Avian-Labs/Auth/pull/131): theme color / token fixes
 - **v1.26.5** `chore` [#132](https://github.com/Dark-Avian-Labs/Auth/pull/132): dependency updates
+- **v1.26.6** `chore` [#133](https://github.com/Dark-Avian-Labs/Auth/pull/133): MaterialSymbol in FormSelect
+- **v1.26.7** `chore` [#134](https://github.com/Dark-Avian-Labs/Auth/pull/134): feathers icon PNG → SVG in Layout
+- **v1.26.8** `chore(deps)` [#135](https://github.com/Dark-Avian-Labs/Auth/pull/135): update oxfmt and oxlint
+- **v1.26.9** `chore`: Update dependencies

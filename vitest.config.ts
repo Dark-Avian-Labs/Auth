@@ -7,11 +7,7 @@ export default defineConfig({
     setupFiles: ['server/test/setupEnv.ts'],
     env: {
       MOCK_DB: process.env.MOCK_DB ?? 'true',
-    },
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'html'],
-      reportsDirectory: 'coverage',
+      SESSION_SECRET: process.env.SESSION_SECRET ?? 'auth-dev-only-session-secret-32char',
     },
   },
 });

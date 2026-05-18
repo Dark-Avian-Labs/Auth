@@ -95,6 +95,13 @@ export function clearAuthCookies(res: express.Response): void {
   res.clearCookie(AUTH_COOKIE_NAME, options);
 }
 
+function clearStaleAuthSession(req: express.Request): void {
+  delete req.session.user_id;
+  delete req.session.username;
+  delete req.session.is_admin;
+  delete req.session.login_time;
+}
+
 export function requireAuth(
   req: express.Request,
   res: express.Response,
@@ -105,6 +112,49 @@ export function requireAuth(
     return;
   }
   res.status(401).json({ error: 'Authentication required' });
+}
+
+export function requireAuthPage(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
+  const userId = req.session.user_id;
+  if (typeof userId !== 'number' || userId <= 0) {
+    res.redirect('/login');
+    return;
+  }
+  if (!getUserById(userId)) {
+    clearStaleAuthSession(req);
+    res.redirect('/login');
+    return;
+  }
+  next();
+}
+
+export function requireAdminPage(
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction,
+): void {
+  const userId = req.session.user_id;
+  if (typeof userId !== 'number' || userId <= 0) {
+    res.redirect('/login');
+    return;
+  }
+  const user = getUserById(userId);
+  if (!user) {
+    clearStaleAuthSession(req);
+    res.redirect('/login');
+    return;
+  }
+  if (!user.is_admin) {
+    req.session.is_admin = false;
+    res.status(403).send('Admin access required');
+    return;
+  }
+  req.session.is_admin = true;
+  next();
 }
 
 export function requireAdmin(

@@ -8,7 +8,7 @@ import { rateLimit } from 'express-rate-limit';
 import session from 'express-session';
 import helmet from 'helmet';
 
-import { requireAdmin, sanitizeNextUrl } from './auth/service.js';
+import { requireAdminPage, requireAuthPage, sanitizeNextUrl } from './auth/service.js';
 import {
   ALLOWED_APP_ORIGINS,
   APP_NAME,
@@ -22,10 +22,13 @@ import {
   SECURE_COOKIES,
   SESSION_COOKIE_NAME,
   SESSION_SECRET,
+  SHUTDOWN_TIMEOUT_MS,
   TRUST_PROXY,
   ensureDataDirs,
 } from './config.js';
 import { createSchema, db, migrateSchema } from './db/authDb.js';
+import { getRequestId, requestIdMiddleware } from './http/requestId.js';
+import { log } from './logger.js';
 import { adminApiRouter } from './routes/adminApi.js';
 import { createAuthApiRouter } from './routes/authApi.js';
 import { secFetchSiteIsCrossSite } from './secFetchSite.js';
@@ -36,7 +39,7 @@ const SQLiteStore = require('better-sqlite3-session-store')(session);
 ensureDataDirs();
 createSchema();
 migrateSchema();
-console.log(`[${APP_NAME}] Central DB ready`);
+log('info', 'Central DB ready', { app: APP_NAME });
 
 const app = express();
 if (TRUST_PROXY) app.set('trust proxy', 1);
@@ -45,6 +48,7 @@ if (NODE_ENV === 'production' && SECURE_COOKIES && !TRUST_PROXY) {
 }
 
 app.use(helmet());
+app.use(requestIdMiddleware);
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -56,18 +60,12 @@ const baselineLimiter = rateLimit({
   legacyHeaders: false,
   skip: (req) =>
     req.path === '/healthz' ||
+    req.path === '/readyz' ||
     req.path === '/api/version' ||
     req.path === '/favicon.ico' ||
     /^\/assets\/.+\.(?:css|js|png|jpe?g|gif|webp|svg|ico|woff2?)$/i.test(req.path),
 });
 app.use(baselineLimiter);
-
-const readinessLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
 const sessionStore = new SQLiteStore({
   client: db,
@@ -184,7 +182,10 @@ app.post('/logout', (req, res) => {
   const next = sanitizeNextUrl(nextInput, '/login');
   req.session.destroy((err) => {
     if (err) {
-      console.error('[Session] Failed to destroy session:', err);
+      log('error', 'Failed to destroy session during logout', {
+        requestId: getRequestId(res),
+        err: err instanceof Error ? err.message : String(err),
+      });
     }
     res.clearCookie(SESSION_COOKIE_NAME, sessionCookieClearOptions);
     res.redirect(next);
@@ -209,7 +210,7 @@ app.get('/healthz', (_req, res) => {
   res.json({ status: 'ok', app: APP_NAME });
 });
 
-app.get('/readyz', readinessLimiter, (_req, res) => {
+app.get('/readyz', (_req, res) => {
   try {
     db.prepare('SELECT 1').get();
     res.json({ status: 'ready', app: APP_NAME });
@@ -243,14 +244,6 @@ app.use(
 );
 app.use(publicPageLimiter, express.static(clientDir, { maxAge: '1h' }));
 
-function ensureAuthenticatedPage(req: Request, res: Response, next: express.NextFunction): void {
-  if (typeof req.session.user_id === 'number' && req.session.user_id > 0) {
-    next();
-    return;
-  }
-  res.redirect('/login');
-}
-
 app.get('/favicon.ico', publicPageLimiter, (_req, res) => {
   res.sendFile(path.join(PROJECT_ROOT, 'favicon.ico'));
 });
@@ -261,13 +254,13 @@ app.get('/login', publicPageLimiter, (_req, res) => {
 app.get('/legal', publicPageLimiter, (_req, res) => {
   res.sendFile(clientIndexPath);
 });
-app.get('/admin', publicPageLimiter, requireAdmin, (_req, res) => {
+app.get('/admin', publicPageLimiter, requireAdminPage, (_req, res) => {
   res.sendFile(clientIndexPath);
 });
-app.get('/profile', publicPageLimiter, ensureAuthenticatedPage, (_req, res) => {
+app.get('/profile', publicPageLimiter, requireAuthPage, (_req, res) => {
   res.sendFile(clientIndexPath);
 });
-app.get('/', publicPageLimiter, ensureAuthenticatedPage, (_req, res) => {
+app.get('/', publicPageLimiter, requireAuthPage, (_req, res) => {
   res.sendFile(clientIndexPath);
 });
 
@@ -275,8 +268,25 @@ app.use((err: unknown, _req: Request, res: Response, _next: express.NextFunction
   const error = err as Partial<Error> & {
     status?: number;
     statusCode?: number;
+    code?: string;
   };
-  console.error('[Error]', error.stack ?? error.message);
+  const message = error.message || '';
+  const lowerMessage = message.toLowerCase();
+  const isNamedCsrfError =
+    error.name === 'CsrfError' || (error.constructor && error.constructor.name === 'CsrfError');
+  const isForbiddenError =
+    error.name === 'ForbiddenError' ||
+    (error.constructor && error.constructor.name === 'ForbiddenError');
+  const isCsrfError =
+    isNamedCsrfError ||
+    error.code === 'EBADCSRFTOKEN' ||
+    (isForbiddenError && lowerMessage.includes('csrf'));
+  if (isCsrfError) {
+    res.setHeader('X-CSRF-Error', '1');
+    res.status(403).json({ error: 'Invalid CSRF token', code: 'CSRF_INVALID' });
+    return;
+  }
+
   const status =
     typeof error.status === 'number'
       ? error.status
@@ -285,35 +295,57 @@ app.use((err: unknown, _req: Request, res: Response, _next: express.NextFunction
         : error.name === 'ForbiddenError'
           ? 403
           : 500;
+  const isClientError = status >= 400 && status < 500;
+  log(isClientError ? 'warn' : 'error', 'Unhandled request error', {
+    requestId: getRequestId(res),
+    status,
+    err: error.stack ?? message,
+  });
   const safeMessage =
-    NODE_ENV === 'production' && status >= 500
-      ? 'Internal server error'
-      : (error.message ?? 'Internal server error');
+    isClientError && typeof error.message === 'string' && error.message.trim().length > 0
+      ? error.message.trim()
+      : status >= 500
+        ? 'Internal server error'
+        : 'Request error';
   res.status(status).json({ error: safeMessage });
 });
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`[${APP_NAME}] Server running on http://${HOST}:${PORT} (${NODE_ENV})`);
+  log('info', `${APP_NAME} server listening`, { host: HOST, port: PORT, nodeEnv: NODE_ENV });
 });
 
-const SHUTDOWN_TIMEOUT_MS = 10_000;
 let shutdownStarted = false;
 function shutdown(): void {
   if (shutdownStarted) return;
   shutdownStarted = true;
 
-  function closeAndExit(): void {
+  function closeAndExit(exitCode: number): void {
     try {
       db.close();
     } catch (err) {
-      console.error('[Shutdown] Failed to close DB:', err);
+      log('error', 'Failed to close DB during shutdown', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+      exitCode = 1;
     }
-    process.exit(0);
+    process.exit(exitCode);
   }
-  const timeout = setTimeout(() => closeAndExit(), SHUTDOWN_TIMEOUT_MS);
-  server.close(() => {
-    clearTimeout(timeout);
-    closeAndExit();
+
+  const hardTimeout = setTimeout(() => {
+    log('warn', 'Shutdown timeout reached; forcing exit', { timeoutMs: SHUTDOWN_TIMEOUT_MS });
+    closeAndExit(1);
+  }, SHUTDOWN_TIMEOUT_MS);
+
+  server.close((err) => {
+    clearTimeout(hardTimeout);
+    if (err) {
+      log('error', 'HTTP server close failed', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+      closeAndExit(1);
+      return;
+    }
+    closeAndExit(0);
   });
 }
 process.on('SIGINT', shutdown);

@@ -36,7 +36,7 @@ describe('isSafeRelativePath', () => {
     ['/dashboard', true],
     ['/dashboard?tab=settings', true],
     ['/dashboard#section', true],
-    ['/path//subpath', true],
+    ['/path//subpath', false],
     [APP_PATHS.home, true],
     ['//evil.com/phish', false],
     ['https://evil.example.com/steal', false],

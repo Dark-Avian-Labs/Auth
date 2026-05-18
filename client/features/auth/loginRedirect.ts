@@ -1,24 +1,7 @@
 import { APP_PATHS } from '../../app/paths';
+import { isSafeRelativePath } from './safeRelativePath';
 
-export function isSafeRelativePath(next: string): boolean {
-  if (next.includes('\\') || /%5c/i.test(next)) {
-    return false;
-  }
-  let decodedNext: string;
-  try {
-    decodedNext = decodeURIComponent(next);
-  } catch {
-    decodedNext = next;
-  }
-  if (decodedNext.includes('\\')) {
-    return false;
-  }
-  return (
-    decodedNext.startsWith('/') &&
-    !decodedNext.startsWith('//') &&
-    !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(decodedNext)
-  );
-}
+export { isSafeRelativePath } from './safeRelativePath';
 
 export function isAbsoluteHttpUrl(next: string): boolean {
   return /^https?:\/\//i.test(next);

@@ -9,6 +9,7 @@ import {
 } from 'react';
 
 import { apiFetch, clearCsrfToken } from '../../utils/api';
+import { isSafeRelativePath } from './safeRelativePath';
 import type { AppSummary, AuthState, RemoteAuthState } from './types';
 
 interface AuthContextValue {
@@ -43,15 +44,6 @@ function getRetryAfterMs(response: Response): number | null {
     }
   }
   return null;
-}
-
-function isSafeRelativePath(next: string): boolean {
-  return (
-    next.startsWith('/') &&
-    !next.startsWith('//') &&
-    !next.includes('//') &&
-    !/^[a-zA-Z][a-zA-Z\d+\-.]*:/.test(next)
-  );
 }
 
 function isAppSummary(value: unknown): value is AppSummary {

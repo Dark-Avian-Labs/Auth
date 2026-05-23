@@ -1,5 +1,8 @@
 # Auth
 
+> [!WARNING]
+> **Deprecated.** Auth is no longer used for authentication. [Armory](https://github.com/Dark-Avian-Labs/Armory) and [Codex](https://github.com/Dark-Avian-Labs/Codex) now use [Clerk](https://clerk.com) directly. This repository is kept for reference and migration history only — do not deploy it for new setups.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Cursor](https://img.shields.io/badge/Cursor-IDE-141414?logo=cursor&logoColor=white)](https://cursor.com)
 ![Node](https://img.shields.io/badge/Node-%3E%3D25-339933?logo=node.js&logoColor=white)
@@ -8,9 +11,8 @@
 ![Vite](https://img.shields.io/badge/Vite-8.x-646CFF?logo=vite&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white)
 
-Auth is the shared authentication and authorization service used by the other Dark Avian Labs apps.
-It manages users, sessions, app access, and permission assignments through a central SQLite database.
-Auth is the single point of truth for user-related concerns for apps that integrate with it.
+Auth was the shared authentication and authorization service for Dark Avian Labs apps.
+It managed users, sessions, app access, and permission assignments through a central SQLite database.
 
 ## Requirements
 
